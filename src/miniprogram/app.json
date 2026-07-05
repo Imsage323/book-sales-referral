@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "pages/buyer/index/index",
+    "pages/buyer/result/result",
+    "pages/buyer/address/address",
+    "pages/buyer/group/group",
+    "pages/seller/login/login",
+    "pages/seller/index/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "图书购买",
+    "navigationBarTextStyle": "black"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

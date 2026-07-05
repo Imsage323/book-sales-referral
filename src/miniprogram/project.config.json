@@ -1,0 +1,19 @@
+{
+  "description": "企业小程序销售记账系统",
+  "packOptions": {
+    "ignore": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.0.0",
+  "appid": "your-appid-here",
+  "projectname": "book-sales-miniprogram",
+  "condition": {}
+}
