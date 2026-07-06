@@ -364,7 +364,7 @@ Create: `src/server/src/sellers/entities/seller.entity.ts`
 ```typescript
 import {
   Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn,
-  CreateDateColumn, UpdateDateColumn, Index, OneToMany,
+  CreateDateColumn, UpdateDateColumn, OneToMany,
 } from 'typeorm';
 import { SellerQrcode } from './seller-qrcode.entity';
 
@@ -381,7 +381,6 @@ export class Seller {
   @Column({ length: 100 })
   name: string;
 
-  @Index({ unique: true })
   @Column({ length: 50, unique: true })
   sellerCode: string;
 
@@ -502,7 +501,7 @@ export class Product {
 Create: `src/server/src/orders/entities/order.entity.ts`
 ```typescript
 import {
-  Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn, UpdateDateColumn,
+  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn,
 } from 'typeorm';
 
 export enum OrderStatus {
@@ -523,7 +522,6 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
   @Column({ length: 50, unique: true })
   orderNo: string;
 
@@ -1305,12 +1303,16 @@ export class OperationLogInterceptor implements NestInterceptor {
     const user = request.user;
     return next.handle().pipe(
       tap(async () => {
-        await this.operationLogsService.log(
-          user?.userId,
-          `${request.method} ${request.path}`,
-          request.params?.id || '-',
-          { body: request.body },
-        );
+        try {
+          await this.operationLogsService.log(
+            user?.userId,
+            `${request.method} ${request.path}`,
+            request.params?.id || '-',
+            { body: request.body },
+          );
+        } catch {
+          // Operation logging is best-effort; do not fail the request.
+        }
       }),
     );
   }
@@ -1651,7 +1653,7 @@ Create: `src/server/test/auth.e2e-spec.ts`
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 
 jest.setTimeout(30000);
@@ -1665,6 +1667,7 @@ describe('AuthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   });
 
@@ -1677,6 +1680,16 @@ describe('AuthController (e2e)', () => {
       .post('/api/auth/login')
       .send({ username: 'admin', password: 'wrong' })
       .expect(401);
+  });
+
+  it('/api/auth/login (POST) should return access token for valid credentials', () => {
+    return request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ username: 'admin', password: 'admin123456' })
+      .expect(200)
+      .expect((res: request.Response) => {
+        expect(res.body.accessToken).toBeDefined();
+      });
   });
 });
 ```
