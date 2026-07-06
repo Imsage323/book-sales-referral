@@ -62,34 +62,38 @@ describe('OrdersController (e2e)', () => {
     expect(res.body.order.id).toBe(createRes.body.id);
   });
 
-  it('should update order status to paid and fill address', async () => {
+  it('should pay an order and record mock transaction id', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/api/orders')
+      .send({ productId, sellerId, openid: 'test-openid' });
+    const id = createRes.body.id;
+
+    const payRes = await request(app.getHttpServer())
+      .post(`/api/orders/${id}/pay`)
+      .expect(201);
+
+    expect(payRes.body.status).toBe('paid');
+    expect(payRes.body.paidAt).toBeTruthy();
+    expect(payRes.body.wxTransactionId).toMatch(/^MOCK-/);
+
+    const orderRes = await request(app.getHttpServer())
+      .get(`/api/orders/${id}`)
+      .expect(200);
+    expect(orderRes.body.order.status).toBe('paid');
+  });
+
+  it('should reject paying an already paid order', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/api/orders')
       .send({ productId, sellerId, openid: 'test-openid' });
     const id = createRes.body.id;
 
     await request(app.getHttpServer())
-      .patch(`/api/orders/${id}/status`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ status: 'paid' })
-      .expect(200);
+      .post(`/api/orders/${id}/pay`)
+      .expect(201);
 
-    const res = await request(app.getHttpServer())
-      .patch(`/api/orders/${id}/address`)
-      .send({
-        recipient: '张三',
-        phone: '13800138000',
-        province: '北京',
-        city: '北京市',
-        district: '朝阳区',
-        address: '测试地址',
-      })
-      .expect(200);
-    expect(res.body.recipient).toBe('张三');
-
-    const orderRes = await request(app.getHttpServer())
-      .get(`/api/orders/${id}`)
-      .expect(200);
-    expect(orderRes.body.order.status).toBe('address_pending');
+    await request(app.getHttpServer())
+      .post(`/api/orders/${id}/pay`)
+      .expect(400);
   });
 });

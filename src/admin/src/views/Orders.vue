@@ -76,6 +76,7 @@
         <el-descriptions-item label="单价">{{ (currentOrder.unitPrice / 100).toFixed(2) }} 元</el-descriptions-item>
         <el-descriptions-item label="OpenID">{{ currentOrder.openid }}</el-descriptions-item>
         <el-descriptions-item label="支付时间">{{ currentOrder.paidAt || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="微信支付单号">{{ currentOrder.wxTransactionId || '-' }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ currentOrder.createdAt }}</el-descriptions-item>
       </el-descriptions>
       <div v-if="currentAddress" class="address-section">

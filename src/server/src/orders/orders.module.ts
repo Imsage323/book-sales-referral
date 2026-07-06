@@ -6,9 +6,10 @@ import { Order } from './entities/order.entity';
 import { OrderAddress } from './entities/order-address.entity';
 import { Product } from '../products/entities/product.entity';
 import { Seller } from '../sellers/entities/seller.entity';
+import { PaymentEvent } from '../payments/entities/payment-event.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderAddress, Product, Seller])],
+  imports: [TypeOrmModule.forFeature([Order, OrderAddress, Product, Seller, PaymentEvent])],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

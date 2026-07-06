@@ -1,7 +1,7 @@
 {
   "pages": [
     "pages/buyer/index/index",
-    "pages/buyer/result/result",
+    "pages/buyer/pay/pay",
     "pages/buyer/address/address",
     "pages/buyer/group/group",
     "pages/seller/login/login",

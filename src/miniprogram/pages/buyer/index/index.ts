@@ -120,7 +120,7 @@ Page({
       });
       const groupQrcode = product.groupQrcode || '';
       wx.navigateTo({
-        url: `/pages/buyer/address/address?orderId=${order.id}&groupQrcode=${encodeURIComponent(groupQrcode)}`,
+        url: `/pages/buyer/pay/pay?orderId=${order.id}&groupQrcode=${encodeURIComponent(groupQrcode)}`,
       });
     } catch (err) {
       console.error('create order failed', err);

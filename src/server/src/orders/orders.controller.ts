@@ -14,6 +14,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderAddressDto } from './dto/order-address.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
+import { PayOrderDto } from './dto/pay-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('orders')
@@ -51,5 +52,10 @@ export class OrdersController {
     @Body() dto: OrderAddressDto,
   ) {
     return this.ordersService.updateAddress(id, dto);
+  }
+
+  @Post(':id/pay')
+  pay(@Param('id', ParseUUIDPipe) id: string, @Body() _dto: PayOrderDto) {
+    return this.ordersService.payOrder(id);
   }
 }

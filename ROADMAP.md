@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 3.1：家长扫码产品页 + 订单创建 + 发货管理（不接入微信支付）** — 已完成并验证
+**Phase 3.2：占位微信支付（模拟支付环境，未接入真实微信支付）** — 已完成并验证
 
 ## 已完成
 
@@ -40,12 +40,18 @@
 - [x] 小程序地址填写页与结果页
 - [x] 小程序入群引导页
 - [x] 管理后台订单管理页（列表、详情、改状态、发货）
+- [x] 占位微信支付接口（`POST /api/orders/:id/pay`）
+- [x] 订单支付状态流转：`pending_payment` → `paid`
+- [x] 模拟微信支付单号生成与 `payment_events` 记录
+- [x] 小程序支付确认页（`pages/buyer/pay/pay`）
+- [x] 小程序购买流程：扫码 → 产品页 → 创建订单 → 模拟支付 → 填写地址 → 结果页
+- [x] 管理后台订单详情显示微信支付单号
 
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
-- `cd src/server && npm run test` ✅ 通过（5 个单元测试）
-- `cd src/server && npm run test:e2e` ✅ 19 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments）
+- `cd src/server && npm run test` ✅ 通过（8 个单元测试）
+- `cd src/server && npm run test:e2e` ✅ 20 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments）
 - `cd src/admin && npm run build` ✅ 通过
 - MySQL 数据库表确认 ✅ 13 张业务表 + `migrations` 表
 
@@ -71,13 +77,13 @@ JWT_EXPIRES_IN=7d
 
 ## 待办（下一阶段）
 
-**Phase 3.2：微信支付集成**
+**Phase 3.2（真实化）：微信支付真实集成**
 
-- [ ] 微信小程序登录获取 openid
-- [ ] 微信支付统一下单接口
+- [ ] 微信小程序登录获取真实 `openid`
+- [ ] 微信支付统一下单接口（接入商户号 / APIv3）
 - [ ] 微信支付回调处理（验签、幂等、更新订单状态）
-- [ ] 小程序调起微信支付
-- [ ] 支付结果页优化
+- [ ] 小程序端调用 `wx.requestPayment` 调起微信支付
+- [ ] 替换模拟支付单号生成逻辑，写入真实 `wxTransactionId`
 
 **Phase 3.3：售后观察期与返点**
 
@@ -123,6 +129,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-06：Phase 3.2（占位版）完成，实现模拟支付接口、小程序支付确认页、`payment_events` 记录，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.1 完成，实现扫码产品页、订单创建、地址填写、发货管理及对应管理后台和小程序页面
 - 2026-07-06：Phase 2 完成，销售方、产品、二维码模块及对应管理后台页面开发完成，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 1 完成，数据库迁移和 E2E 测试通过

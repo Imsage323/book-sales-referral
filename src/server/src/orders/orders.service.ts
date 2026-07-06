@@ -10,6 +10,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderAddressDto } from './dto/order-address.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
+import { PaymentEvent } from '../payments/entities/payment-event.entity';
 import { generateOrderNo } from './order-number.generator';
 
 @Injectable()
@@ -23,6 +24,8 @@ export class OrdersService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(Seller)
     private readonly sellerRepo: Repository<Seller>,
+    @InjectRepository(PaymentEvent)
+    private readonly paymentEventRepo: Repository<PaymentEvent>,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<Order> {
@@ -135,6 +138,38 @@ export class OrdersService {
     order.status = newStatus;
     if (dto.remark) order.remark = dto.remark;
     return this.orderRepo.save(order);
+  }
+
+  async payOrder(id: string): Promise<Order> {
+    const order = await this.orderRepo.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new BadRequestException('订单当前状态不允许支付');
+    }
+
+    order.status = OrderStatus.PAID;
+    order.paidAt = new Date();
+    order.wxTransactionId = `MOCK-${order.orderNo}-${Date.now()}`;
+    await this.orderRepo.save(order);
+
+    const paymentEvent = this.paymentEventRepo.create({
+      orderNo: order.orderNo,
+      amount: order.totalAmount,
+      result: 'SUCCESS',
+      verified: true,
+      rawBody: JSON.stringify({
+        type: 'mock_payment',
+        orderId: order.id,
+        orderNo: order.orderNo,
+        totalAmount: order.totalAmount,
+        paidAt: order.paidAt.toISOString(),
+      }),
+    });
+    await this.paymentEventRepo.save(paymentEvent);
+
+    return order;
   }
 
   private isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
