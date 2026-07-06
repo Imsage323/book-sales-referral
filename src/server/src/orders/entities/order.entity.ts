@@ -2,7 +2,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  Index,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -25,7 +24,6 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
   @Column({ length: 50, unique: true })
   orderNo: string;
 

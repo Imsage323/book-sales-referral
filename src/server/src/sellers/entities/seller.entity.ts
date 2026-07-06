@@ -6,7 +6,6 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
   OneToMany,
 } from 'typeorm';
 import { SellerQrcode } from './seller-qrcode.entity';
@@ -24,7 +23,6 @@ export class Seller {
   @Column({ length: 100 })
   name: string;
 
-  @Index({ unique: true })
   @Column({ length: 50, unique: true })
   sellerCode: string;
 
