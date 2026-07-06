@@ -12,6 +12,7 @@ import { QrcodesModule } from './qrcodes/qrcodes.module';
 import { ScanLogsModule } from './scan-logs/scan-logs.module';
 import { OrdersModule } from './orders/orders.module';
 import { ShipmentsModule } from './shipments/shipments.module';
+import { LedgerModule } from './ledger/ledger.module';
 import { OperationLogInterceptor } from './operation-logs/operation-log.interceptor';
 
 @Module({
@@ -32,6 +33,7 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
     ScanLogsModule,
     OrdersModule,
     ShipmentsModule,
+    LedgerModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: OperationLogInterceptor }],
 })

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, Between } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
 import { OrderAddress } from './entities/order-address.entity';
 import { Product } from '../products/entities/product.entity';
@@ -71,11 +71,14 @@ export class OrdersService {
   }
 
   async findAll(query: QueryOrderDto): Promise<{ items: Order[]; total: number }> {
-    const { keyword, status, sellerId, page = 1, pageSize = 20 } = query;
+    const { keyword, status, sellerId, startDate, endDate, page = 1, pageSize = 20 } = query;
     const where: any = {};
     if (status) where.status = status;
     if (sellerId) where.sellerId = sellerId;
     if (keyword) where.orderNo = Like(`%${keyword}%`);
+    if (startDate || endDate) {
+      where.createdAt = this.buildDateRange(startDate, endDate);
+    }
 
     const [items, total] = await this.orderRepo.findAndCount({
       where,
@@ -170,6 +173,18 @@ export class OrdersService {
     await this.paymentEventRepo.save(paymentEvent);
 
     return order;
+  }
+
+  private buildDateRange(
+    startDate?: string,
+    endDate?: string,
+  ): import('typeorm').FindOperator<Date> | undefined {
+    if (!startDate && !endDate) return undefined;
+    const start = startDate ? new Date(startDate) : new Date('1970-01-01');
+    start.setHours(0, 0, 0, 0);
+    const end = endDate ? new Date(endDate) : new Date('2099-12-31');
+    end.setHours(23, 59, 59, 999);
+    return Between(start, end);
   }
 
   private isValidTransition(current: OrderStatus, next: OrderStatus): boolean {

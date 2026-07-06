@@ -15,6 +15,9 @@
         <el-menu-item index="/qrcodes">
           <span>二维码管理</span>
         </el-menu-item>
+        <el-menu-item index="/ledger">
+          <span>台账导出</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

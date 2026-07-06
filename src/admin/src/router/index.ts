@@ -5,6 +5,7 @@ import Sellers from '../views/Sellers.vue';
 import Products from '../views/Products.vue';
 import Orders from '../views/Orders.vue';
 import Qrcodes from '../views/Qrcodes.vue';
+import Ledger from '../views/Ledger.vue';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: Login },
@@ -17,6 +18,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'products', component: Products },
       { path: 'orders', component: Orders },
       { path: 'qrcodes', component: Qrcodes },
+      { path: 'ledger', component: Ledger },
     ],
   },
 ];

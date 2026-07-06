@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 3.2：占位微信支付（模拟支付环境，未接入真实微信支付）** — 已完成并验证
+**Phase 3.4：台账与导出（订单/发货台账 + 销售汇总，返点台账预留）** — 已完成并验证
 
 ## 已完成
 
@@ -46,12 +46,17 @@
 - [x] 小程序支付确认页（`pages/buyer/pay/pay`）
 - [x] 小程序购买流程：扫码 → 产品页 → 创建订单 → 模拟支付 → 填写地址 → 结果页
 - [x] 管理后台订单详情显示微信支付单号
+- [x] 台账导出模块（`LedgerModule`、`GET /api/ledger/export`）
+- [x] 订单明细与销售汇总 Excel 导出
+- [x] 订单列表支持按日期范围筛选
+- [x] 管理后台“台账导出”页面（筛选、预览、下载）
+- [x] 台账导出 E2E 测试
 
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
-- `cd src/server && npm run test` ✅ 通过（8 个单元测试）
-- `cd src/server && npm run test:e2e` ✅ 20 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments）
+- `cd src/server && npm run test` ✅ 通过（9 个单元测试）
+- `cd src/server && npm run test:e2e` ✅ 22 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger）
 - `cd src/admin && npm run build` ✅ 通过
 - MySQL 数据库表确认 ✅ 13 张业务表 + `migrations` 表
 
@@ -94,14 +99,15 @@ JWT_EXPIRES_IN=7d
 - [ ] 返点溯源记录
 - [ ] 管理后台返点处理页
 
-**Phase 3.4：台账与导出**
+**Phase 3.4（完整化）：台账与导出（含返点台账）**
 
-- [ ] 销售汇总
-- [ ] 订单/发货/返点台账 Excel 导出
+- [ ] 返点台账导出（依赖 Phase 3.3 的 reward_records 数据）
+- [ ] 更多汇总维度：按产品、按地区、按时间段
+- [ ] 发货明细独立台账 sheet
 
 ## 阻塞
 
-无
+- Phase 3.4 返点台账依赖 Phase 3.3 的返点规则与计算逻辑
 
 ## 待确认
 
@@ -129,6 +135,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-06：Phase 3.4（订单/发货台账 + 销售汇总）完成，新增 `LedgerModule`、Excel 导出接口、管理后台台账导出页面，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.2（占位版）完成，实现模拟支付接口、小程序支付确认页、`payment_events` 记录，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.1 完成，实现扫码产品页、订单创建、地址填写、发货管理及对应管理后台和小程序页面
 - 2026-07-06：Phase 2 完成，销售方、产品、二维码模块及对应管理后台页面开发完成，单元测试与 E2E 测试全部通过
