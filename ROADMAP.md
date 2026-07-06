@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 3.3：售后观察期与返点（使用占位返点规则）** — 已完成并验证
+**Phase 4：部署准备（GitHub 仓库 + 微信云托管容器部署）** — 进行中
 
 ## 已完成
 
@@ -91,6 +91,15 @@ JWT_EXPIRES_IN=7d
 
 ## 待办（下一阶段）
 
+**Phase 4：部署准备（GitHub 仓库 + 微信云托管容器部署）**
+
+- [ ] 创建 GitHub 仓库 `Imsage323/book-sales-referral` 并推送本地代码
+- [ ] 为后端添加 `Dockerfile` 与 `.dockerignore`
+- [ ] 添加 TypeORM 迁移脚本（`migration:run` / `migration:show`）
+- [ ] 在微信云托管绑定 GitHub 仓库并配置环境变量
+- [ ] 在微信云托管创建/连接 MySQL 数据库并运行首次迁移
+- [ ] 验证云托管后端服务可访问（健康检查或登录接口）
+
 **Phase 3.2（真实化）：微信支付真实集成**
 
 - [ ] 微信小程序登录获取真实 `openid`
@@ -144,6 +153,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-06：Phase 4 部署准备开始，创建 GitHub 仓库 https://github.com/Imsage323/book-sales-referral，添加后端 Dockerfile、.dockerignore 与 TypeORM 迁移脚本
 - 2026-07-06：Phase 3.3 完成，实现售后观察期结算、返点规则/记录管理、一层直接推荐奖励，使用占位返点规则，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.4（订单/发货台账 + 销售汇总）完成，新增 `LedgerModule`、Excel 导出接口、管理后台台账导出页面，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.2（占位版）完成，实现模拟支付接口、小程序支付确认页、`payment_events` 记录，单元测试与 E2E 测试全部通过
