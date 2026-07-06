@@ -17,12 +17,16 @@ export class OperationLogInterceptor implements NestInterceptor {
     const user = request.user;
     return next.handle().pipe(
       tap(async () => {
-        await this.operationLogsService.log(
-          user?.userId,
-          `${request.method} ${request.path}`,
-          request.params?.id || '-',
-          { body: request.body },
-        );
+        try {
+          await this.operationLogsService.log(
+            user?.userId,
+            `${request.method} ${request.path}`,
+            request.params?.id || '-',
+            { body: request.body },
+          );
+        } catch {
+          // Operation logging is best-effort; do not fail the request.
+        }
       }),
     );
   }
