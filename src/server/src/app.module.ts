@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import databaseConfig from './config/database.config';
 import { AuthModule } from './auth/auth.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
@@ -13,6 +14,7 @@ import { ScanLogsModule } from './scan-logs/scan-logs.module';
 import { OrdersModule } from './orders/orders.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { LedgerModule } from './ledger/ledger.module';
+import { RewardsModule } from './rewards/rewards.module';
 import { OperationLogInterceptor } from './operation-logs/operation-log.interceptor';
 
 @Module({
@@ -24,6 +26,7 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
       useFactory: (configService: ConfigService) =>
         configService.get<TypeOrmModuleOptions>('database')!,
     }),
+    ScheduleModule.forRoot(),
     AuthModule,
     AdminUsersModule,
     OperationLogsModule,
@@ -34,6 +37,7 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
     OrdersModule,
     ShipmentsModule,
     LedgerModule,
+    RewardsModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: OperationLogInterceptor }],
 })

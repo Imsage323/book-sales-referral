@@ -18,6 +18,12 @@
         <el-menu-item index="/ledger">
           <span>台账导出</span>
         </el-menu-item>
+        <el-menu-item index="/reward-rules">
+          <span>返点规则</span>
+        </el-menu-item>
+        <el-menu-item index="/reward-records">
+          <span>返点记录</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

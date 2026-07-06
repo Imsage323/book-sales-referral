@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 3.4：台账与导出（订单/发货台账 + 销售汇总，返点台账预留）** — 已完成并验证
+**Phase 3.3：售后观察期与返点（使用占位返点规则）** — 已完成并验证
 
 ## 已完成
 
@@ -51,12 +51,21 @@
 - [x] 订单列表支持按日期范围筛选
 - [x] 管理后台“台账导出”页面（筛选、预览、下载）
 - [x] 台账导出 E2E 测试
+- [x] 售后观察期结算（`aftersale_waiting` → `settlement_ready`）
+- [x] 定时结算扫描（`@nestjs/schedule`，每日凌晨 2 点）与手动触发结算
+- [x] 返点规则管理（CRUD、`GET /api/rewards/rules`）
+- [x] 返点规则匹配：产品+销售方 → 产品 → 销售方 → 默认规则
+- [x] 返点记录生成（`reward_records`）
+- [x] 一层直接推荐奖励（基于 `sellers.parentId`）
+- [x] 返点记录管理（列表、详情、状态更新）
+- [x] 管理后台“返点规则”和“返点记录”页面
+- [x] 售后观察期与返点相关 E2E 测试
 
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
-- `cd src/server && npm run test` ✅ 通过（9 个单元测试）
-- `cd src/server && npm run test:e2e` ✅ 22 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger）
+- `cd src/server && npm run test` ✅ 通过（15 个单元测试）
+- `cd src/server && npm run test:e2e` ✅ 25 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger + settlements + reward-rules + reward-records）
 - `cd src/admin && npm run build` ✅ 通过
 - MySQL 数据库表确认 ✅ 13 张业务表 + `migrations` 表
 
@@ -90,14 +99,14 @@ JWT_EXPIRES_IN=7d
 - [ ] 小程序端调用 `wx.requestPayment` 调起微信支付
 - [ ] 替换模拟支付单号生成逻辑，写入真实 `wxTransactionId`
 
-**Phase 3.3：售后观察期与返点**
+**Phase 3.3：售后观察期与返点** ✅ 已完成
 
-- [ ] 售后观察期自动/手动结算
-- [ ] 返点规则配置（固定金额/比例、阶梯）
-- [ ] 预计返点与最终返点计算
-- [ ] 一层直接推荐奖励
-- [ ] 返点溯源记录
-- [ ] 管理后台返点处理页
+- [x] 售后观察期自动/手动结算
+- [x] 返点规则配置（固定金额/比例/阶梯）
+- [x] 预计返点与最终返点计算
+- [x] 一层直接推荐奖励
+- [x] 返点溯源记录
+- [x] 管理后台返点处理页
 
 **Phase 3.4（完整化）：台账与导出（含返点台账）**
 
@@ -107,13 +116,13 @@ JWT_EXPIRES_IN=7d
 
 ## 阻塞
 
-- Phase 3.4 返点台账依赖 Phase 3.3 的返点规则与计算逻辑
+无
 
 ## 待确认
 
 - [x] 书名、是否允许多本购买：书名《高三学业生涯导航日历》，允许多本购买
 - [ ] 售价（暂用占位价 0.01 元）
-- [ ] 返点规则（固定金额/比例、阶梯门槛、直接推荐奖励）
+- [x] 返点规则：已使用占位规则（默认销售奖励 1 分/本、推荐奖励 0.5 分/本），后续可替换为真实规则
 - [ ] 微信认证、商户号、支付回调域名准备情况
 - [ ] 入群二维码维护方式
 - [ ] 快递公司选择
@@ -135,6 +144,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-06：Phase 3.3 完成，实现售后观察期结算、返点规则/记录管理、一层直接推荐奖励，使用占位返点规则，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.4（订单/发货台账 + 销售汇总）完成，新增 `LedgerModule`、Excel 导出接口、管理后台台账导出页面，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.2（占位版）完成，实现模拟支付接口、小程序支付确认页、`payment_events` 记录，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.1 完成，实现扫码产品页、订单创建、地址填写、发货管理及对应管理后台和小程序页面
