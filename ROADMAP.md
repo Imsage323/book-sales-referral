@@ -66,6 +66,10 @@
 - [x] 微信云托管后端部署（dev 环境）
 - [x] 云托管 MySQL 数据库与 `book_sales` 数据库创建
 - [x] 生产环境变量配置（`NODE_ENV=production`、`DB_HOST`、`JWT_SECRET` 等）
+- [x] 后端启用 CORS 支持管理后台跨域访问
+- [x] 管理后台生产环境 API 地址配置（`.env.production`）
+- [x] 管理后台静态构建产物（`src/admin/dist`）
+
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
