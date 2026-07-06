@@ -15,27 +15,30 @@ import { CreateQrcodeDto } from './dto/create-qrcode.dto';
 import { QueryQrcodeDto } from './dto/query-qrcode.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard)
 @Controller('qrcodes')
 export class QrcodesController {
   constructor(private readonly qrcodesService: QrcodesService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreateQrcodeDto) {
     return this.qrcodesService.create(dto);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(@Query() query: QueryQrcodeDto) {
     return this.qrcodesService.findAll(query);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.qrcodesService.findOne(id);
   }
 
   @Get(':id/download')
+  @UseGuards(JwtAuthGuard)
   async download(
     @Param('id', ParseUUIDPipe) id: string,
     @Res() res: Response,
@@ -47,5 +50,10 @@ export class QrcodesController {
       `attachment; filename="qrcode-${id}.svg"`,
     );
     res.send(buffer);
+  }
+
+  @Get(':id/resolve')
+  resolve(@Param('id', ParseUUIDPipe) id: string) {
+    return this.qrcodesService.resolve(id);
   }
 }

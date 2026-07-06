@@ -9,6 +9,9 @@ import { OperationLogsModule } from './operation-logs/operation-logs.module';
 import { SellersModule } from './sellers/sellers.module';
 import { ProductsModule } from './products/products.module';
 import { QrcodesModule } from './qrcodes/qrcodes.module';
+import { ScanLogsModule } from './scan-logs/scan-logs.module';
+import { OrdersModule } from './orders/orders.module';
+import { ShipmentsModule } from './shipments/shipments.module';
 import { OperationLogInterceptor } from './operation-logs/operation-log.interceptor';
 
 @Module({
@@ -26,6 +29,9 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
     SellersModule,
     ProductsModule,
     QrcodesModule,
+    ScanLogsModule,
+    OrdersModule,
+    ShipmentsModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: OperationLogInterceptor }],
 })

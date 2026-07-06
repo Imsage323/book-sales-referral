@@ -61,6 +61,23 @@ export class ProductsService implements OnModuleInit {
     await this.repo.delete(id);
   }
 
+  async findPublic(id: string): Promise<{ id: string; name: string; cover?: string; price: number; intro?: string; defaultQuantity: number; groupQrcode?: string; isOnSale: boolean }> {
+    const product = await this.findOne(id);
+    if (!product.isOnSale) {
+      throw new NotFoundException('产品已下架');
+    }
+    return {
+      id: product.id,
+      name: product.name,
+      cover: product.cover,
+      price: product.price,
+      intro: product.intro,
+      defaultQuantity: product.defaultQuantity,
+      groupQrcode: product.groupQrcode,
+      isOnSale: product.isOnSale,
+    };
+  }
+
   private async ensureDefaultProduct(): Promise<void> {
     const count = await this.repo.count();
     if (count === 0) {

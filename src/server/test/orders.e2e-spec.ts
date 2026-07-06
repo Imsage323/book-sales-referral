@@ -5,7 +5,7 @@ import { AppModule } from './../src/app.module';
 
 jest.setTimeout(30000);
 
-describe('QrcodesController (e2e)', () => {
+describe('OrdersController (e2e)', () => {
   let app: INestApplication;
   let token: string;
   let sellerId: string;
@@ -28,13 +28,13 @@ describe('QrcodesController (e2e)', () => {
     const sellerRes = await request(app.getHttpServer())
       .post('/api/sellers')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'QR Test Seller' });
+      .send({ name: 'Order Test Seller' });
     sellerId = sellerRes.body.id;
 
     const productRes = await request(app.getHttpServer())
       .post('/api/products')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'QR Test Product', price: 100 });
+      .send({ name: 'Order Test Product', price: 100 });
     productId = productRes.body.id;
   });
 
@@ -42,54 +42,54 @@ describe('QrcodesController (e2e)', () => {
     await app.close();
   });
 
-  it('should generate a qrcode', async () => {
+  it('should create an order', async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/qrcodes')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ sellerId, productId })
+      .post('/api/orders')
+      .send({ productId, sellerId, openid: 'test-openid', quantity: 2 })
       .expect(201);
-
-    expect(res.body.imageUrl).toContain('data:image/svg+xml;base64,');
-    expect(res.body.sellerId).toBe(sellerId);
-    expect(res.body.productId).toBe(productId);
+    expect(res.body.orderNo).toMatch(/^O-\d{8}-\d{4}$/);
+    expect(res.body.totalAmount).toBe(200);
   });
 
-  it('should list qrcodes', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/qrcodes')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200);
-
-    expect(Array.isArray(res.body.items)).toBe(true);
-    expect(res.body.total).toBeGreaterThan(0);
-  });
-
-  it('should resolve a qrcode publicly', async () => {
+  it('should get order details', async () => {
     const createRes = await request(app.getHttpServer())
-      .post('/api/qrcodes')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ sellerId, productId });
+      .post('/api/orders')
+      .send({ productId, sellerId, openid: 'test-openid' });
 
     const res = await request(app.getHttpServer())
-      .get(`/api/qrcodes/${createRes.body.id}/resolve`)
+      .get(`/api/orders/${createRes.body.id}`)
       .expect(200);
-
-    expect(res.body.seller.id).toBe(sellerId);
-    expect(res.body.product.id).toBe(productId);
-    expect(res.body.scene).toBeDefined();
+    expect(res.body.order.id).toBe(createRes.body.id);
   });
 
-  it('should download qrcode image', async () => {
-    const listRes = await request(app.getHttpServer())
-      .get('/api/qrcodes')
-      .set('Authorization', `Bearer ${token}`);
-    const qrcode = listRes.body.items[0];
+  it('should update order status to paid and fill address', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/api/orders')
+      .send({ productId, sellerId, openid: 'test-openid' });
+    const id = createRes.body.id;
 
-    const downloadRes = await request(app.getHttpServer())
-      .get(`/api/qrcodes/${qrcode.id}/download`)
+    await request(app.getHttpServer())
+      .patch(`/api/orders/${id}/status`)
       .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'paid' })
       .expect(200);
 
-    expect(downloadRes.headers['content-type']).toBe('image/svg+xml');
+    const res = await request(app.getHttpServer())
+      .patch(`/api/orders/${id}/address`)
+      .send({
+        recipient: '张三',
+        phone: '13800138000',
+        province: '北京',
+        city: '北京市',
+        district: '朝阳区',
+        address: '测试地址',
+      })
+      .expect(200);
+    expect(res.body.recipient).toBe('张三');
+
+    const orderRes = await request(app.getHttpServer())
+      .get(`/api/orders/${id}`)
+      .expect(200);
+    expect(orderRes.body.order.status).toBe('address_pending');
   });
 });

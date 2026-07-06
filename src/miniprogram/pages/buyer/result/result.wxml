@@ -1,3 +1,28 @@
 <view class="container">
-  <text>支付结果页</text>
+  <view wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{order}}">
+    <view>
+      <text>订单号：{{order.orderNo}}</text>
+    </view>
+    <view>
+      <text>状态：{{order.status}}</text>
+    </view>
+    <view>
+      <text>金额：¥{{order.totalAmount / 100}}</text>
+    </view>
+    <view>
+      <text>数量：{{order.quantity}}</text>
+    </view>
+
+    <view wx:if="{{showGroupButton}}">
+      <button type="primary" bindtap="onJoinGroup">加入售后群</button>
+    </view>
+  </view>
+
+  <view wx:else>
+    <text>未找到订单</text>
+  </view>
 </view>

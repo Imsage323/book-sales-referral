@@ -9,6 +9,9 @@
         <el-menu-item index="/products">
           <span>产品配置</span>
         </el-menu-item>
+        <el-menu-item index="/orders">
+          <span>订单管理</span>
+        </el-menu-item>
         <el-menu-item index="/qrcodes">
           <span>二维码管理</span>
         </el-menu-item>

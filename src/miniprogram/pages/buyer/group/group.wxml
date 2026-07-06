@@ -1,3 +1,11 @@
 <view class="container">
-  <text>入群引导</text>
+  <view>
+    <text>请长按二维码识别，加入售后群</text>
+  </view>
+  <view wx:if="{{groupQrcode}}">
+    <image src="{{groupQrcode}}" mode="aspectFit" style="width: 300px; height: 300px;" show-menu-by-longpress />
+  </view>
+  <view wx:else>
+    <text>暂无群二维码</text>
+  </view>
 </view>

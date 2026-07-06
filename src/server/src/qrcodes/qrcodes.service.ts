@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SellerQrcode } from '../sellers/entities/seller-qrcode.entity';
@@ -7,6 +7,7 @@ import { ProductsService } from '../products/products.service';
 import { CreateQrcodeDto } from './dto/create-qrcode.dto';
 import { QueryQrcodeDto } from './dto/query-qrcode.dto';
 import { generatePlaceholderQrcode } from './qrcode-image.generator';
+import { SellerStatus } from '../sellers/entities/seller.entity';
 
 @Injectable()
 export class QrcodesService {
@@ -73,6 +74,47 @@ export class QrcodesService {
     const base64 = dataUrl.replace('data:image/svg+xml;base64,', '');
     const buffer = Buffer.from(base64, 'base64');
     return { buffer, contentType: 'image/svg+xml' };
+  }
+
+  async resolve(
+    id: string,
+  ): Promise<{ seller: any; product: any | null; scene: string }> {
+    const qrcode = await this.findOne(id);
+    const seller = await this.sellersService.findOne(qrcode.sellerId);
+    if (seller.status !== SellerStatus.ACTIVE) {
+      throw new BadRequestException('销售方已停用');
+    }
+
+    let product = null;
+    if (qrcode.productId) {
+      product = await this.productsService.findOne(qrcode.productId);
+      if (!product.isOnSale) {
+        throw new BadRequestException('产品已下架');
+      }
+    }
+
+    const scene = this.buildScene(qrcode.id);
+    return {
+      seller: {
+        id: seller.id,
+        name: seller.name,
+        sellerCode: seller.sellerCode,
+        school: seller.school,
+        region: seller.region,
+      },
+      product: product
+        ? {
+            id: product.id,
+            name: product.name,
+            cover: product.cover,
+            price: product.price,
+            intro: product.intro,
+            defaultQuantity: product.defaultQuantity,
+            groupQrcode: product.groupQrcode,
+          }
+        : null,
+      scene,
+    };
   }
 
   private buildScene(id: string): string {

@@ -1,3 +1,36 @@
 <view class="container">
-  <text>产品页</text>
+  <view wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{product}}">
+    <image wx:if="{{product.cover}}" src="{{product.cover}}" mode="aspectFit" style="width: 200px; height: 200px;" />
+    <view>
+      <text>{{product.name}}</text>
+    </view>
+    <view>
+      <text>¥{{product.price / 100}}</text>
+    </view>
+    <view wx:if="{{product.intro}}">
+      <text>{{product.intro}}</text>
+    </view>
+    <view wx:if="{{seller}}">
+      <text>卖家：{{seller.name}}</text>
+      <text>学校：{{seller.school}}</text>
+      <text>地区：{{seller.region}}</text>
+    </view>
+
+    <view>
+      <text>数量：</text>
+      <button size="mini" bindtap="decreaseQuantity">-</button>
+      <input type="number" value="{{quantity}}" bindinput="onQuantityInput" style="display: inline-block; width: 60px; text-align: center;" />
+      <button size="mini" bindtap="increaseQuantity">+</button>
+    </view>
+
+    <button type="primary" bindtap="onBuy">立即购买</button>
+  </view>
+
+  <view wx:else>
+    <text>未找到产品信息</text>
+  </view>
 </view>
