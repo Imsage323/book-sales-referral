@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 4：部署准备（GitHub 仓库 + 微信云托管容器部署）** — 进行中
+**Phase 3.2（真实化）：微信支付真实集成** — 阻塞中（待 ICP 备案、微信认证、商户号）
 
 ## 已完成
 
@@ -60,7 +60,12 @@
 - [x] 返点记录管理（列表、详情、状态更新）
 - [x] 管理后台“返点规则”和“返点记录”页面
 - [x] 售后观察期与返点相关 E2E 测试
-
+- [x] GitHub 仓库：`https://github.com/Imsage323/book-sales-referral`
+- [x] 后端 `Dockerfile` 与 `.dockerignore`
+- [x] 容器启动自动运行 TypeORM 迁移
+- [x] 微信云托管后端部署（dev 环境）
+- [x] 云托管 MySQL 数据库与 `book_sales` 数据库创建
+- [x] 生产环境变量配置（`NODE_ENV=production`、`DB_HOST`、`JWT_SECRET` 等）
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
@@ -91,14 +96,14 @@ JWT_EXPIRES_IN=7d
 
 ## 待办（下一阶段）
 
-**Phase 4：部署准备（GitHub 仓库 + 微信云托管容器部署）**
+**Phase 4：部署准备（GitHub 仓库 + 微信云托管容器部署）** ✅ 已完成
 
-- [ ] 创建 GitHub 仓库 `Imsage323/book-sales-referral` 并推送本地代码
-- [ ] 为后端添加 `Dockerfile` 与 `.dockerignore`
-- [ ] 添加 TypeORM 迁移脚本（`migration:run` / `migration:show`）
-- [ ] 在微信云托管绑定 GitHub 仓库并配置环境变量
-- [ ] 在微信云托管创建/连接 MySQL 数据库并运行首次迁移
-- [ ] 验证云托管后端服务可访问（健康检查或登录接口）
+- [x] 创建 GitHub 仓库 `Imsage323/book-sales-referral` 并推送本地代码
+- [x] 为后端添加 `Dockerfile` 与 `.dockerignore`
+- [x] 添加 TypeORM 迁移脚本（`migration:run` / `migration:show`）
+- [x] 在微信云托管绑定仓库并配置环境变量
+- [x] 在微信云托管创建/连接 MySQL 数据库并运行首次迁移
+- [x] 验证云托管后端服务可访问（健康检查或登录接口）
 
 **Phase 3.2（真实化）：微信支付真实集成**
 
@@ -153,6 +158,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-06：Phase 4 部署准备完成，后端成功部署到微信云托管 dev 环境，数据库迁移自动运行，13 张业务表已创建
 - 2026-07-06：Phase 4 部署准备开始，创建 GitHub 仓库 https://github.com/Imsage323/book-sales-referral，添加后端 Dockerfile、.dockerignore 与 TypeORM 迁移脚本
 - 2026-07-06：Phase 3.3 完成，实现售后观察期结算、返点规则/记录管理、一层直接推荐奖励，使用占位返点规则，单元测试与 E2E 测试全部通过
 - 2026-07-06：Phase 3.4（订单/发货台账 + 销售汇总）完成，新增 `LedgerModule`、Excel 导出接口、管理后台台账导出页面，单元测试与 E2E 测试全部通过
