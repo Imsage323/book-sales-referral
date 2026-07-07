@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import databaseConfig from './config/database.config';
 import { AuthModule } from './auth/auth.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
@@ -38,6 +40,10 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
     ShipmentsModule,
     LedgerModule,
     RewardsModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'admin-dist'),
+      exclude: ['/api*'],
+    }),
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: OperationLogInterceptor }],
 })

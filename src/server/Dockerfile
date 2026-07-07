@@ -1,11 +1,21 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS server-builder
 
-WORKDIR /app
+WORKDIR /app/server
 
-COPY package*.json ./
+COPY src/server/package*.json ./
 RUN npm ci
 
-COPY . .
+COPY src/server/. .
+RUN npm run build
+
+FROM node:20-alpine AS admin-builder
+
+WORKDIR /app/admin
+
+COPY src/admin/package*.json ./
+RUN npm ci
+
+COPY src/admin/. .
 RUN npm run build
 
 FROM node:20-alpine
@@ -15,10 +25,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY package*.json ./
+COPY src/server/package*.json ./
 RUN npm ci --only=production
 
-COPY --from=builder /app/dist ./dist
+COPY --from=server-builder /app/server/dist ./dist
+COPY --from=admin-builder /app/admin/dist ./admin-dist
 
 EXPOSE 3000
 

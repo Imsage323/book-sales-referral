@@ -69,6 +69,7 @@
 - [x] 后端启用 CORS 支持管理后台跨域访问
 - [x] 管理后台生产环境 API 地址配置（`.env.production`）
 - [x] 管理后台静态构建产物（`src/admin/dist`）
+- [x] 管理后台集成到后端服务（`@nestjs/serve-static` 静态文件服务 + Docker 多阶段构建）
 
 ## 验证结果
 
@@ -76,6 +77,10 @@
 - `cd src/server && npm run test` ✅ 通过（15 个单元测试）
 - `cd src/server && npm run test:e2e` ✅ 25 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger + settlements + reward-rules + reward-records）
 - `cd src/admin && npm run build` ✅ 通过
+- `cd src/admin && npm run build` ✅ 通过
+- 本地验证后端 `/api/auth/login` ✅ 通过
+- 本地验证 `/login`、`/sellers` 等前端路由返回 `index.html` ✅ 通过
+- 本地验证 `/assets/...` 静态资源 ✅ 通过
 - MySQL 数据库表确认 ✅ 13 张业务表 + `migrations` 表
 
 ## 环境配置
@@ -162,6 +167,7 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-07：管理后台集成到后端服务完成，后端容器统一托管管理后台静态文件，API 地址改为相对路径 `/api`，本地 API 和前端路由验证通过
 - 2026-07-06：Phase 4 部署准备完成，后端成功部署到微信云托管 dev 环境，数据库迁移自动运行，13 张业务表已创建
 - 2026-07-06：Phase 4 部署准备开始，创建 GitHub 仓库 https://github.com/Imsage323/book-sales-referral，添加后端 Dockerfile、.dockerignore 与 TypeORM 迁移脚本
 - 2026-07-06：Phase 3.3 完成，实现售后观察期结算、返点规则/记录管理、一层直接推荐奖励，使用占位返点规则，单元测试与 E2E 测试全部通过
