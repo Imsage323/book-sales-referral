@@ -31,7 +31,10 @@ const form = reactive({ username: '', password: '' });
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码长度至少 6 位', trigger: 'blur' },
+  ],
 };
 
 async function handleLogin() {
@@ -41,11 +44,17 @@ async function handleLogin() {
   loading.value = true;
   try {
     const { data } = await api.post('/auth/login', form);
-    localStorage.setItem('token', data.accessToken || data.token);
+    if (!data.accessToken) {
+      ElMessage.error('登录响应异常，缺少 token');
+      return;
+    }
+    localStorage.setItem('token', data.accessToken);
     ElMessage.success('登录成功');
     router.push('/');
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '登录失败');
+    const rawMessage = error.response?.data?.message || error.message || '登录失败';
+    const message = Array.isArray(rawMessage) ? rawMessage.join('；') : String(rawMessage);
+    ElMessage.error(message);
   } finally {
     loading.value = false;
   }
