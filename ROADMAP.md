@@ -69,7 +69,7 @@
 - [x] 后端启用 CORS 支持管理后台跨域访问
 - [x] 管理后台生产环境 API 地址配置（`.env.production`）
 - [x] 管理后台静态构建产物（`src/admin/dist`）
-- [x] 管理后台集成到后端服务（`@nestjs/serve-static` 静态文件服务 + Docker 多阶段构建）
+- [x] 管理后台集成到后端服务（`@nestjs/serve-static` 静态文件服务 + 仓库根目录 `Dockerfile` 多阶段构建）
 
 ## 验证结果
 
