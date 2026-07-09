@@ -123,7 +123,12 @@ async function generate() {
 }
 
 function download(row: any) {
-  window.open(`/api/qrcodes/${row.id}/download`, '_blank');
+  const link = document.createElement('a');
+  link.href = row.imageUrl;
+  link.download = `qrcode-${row.id}.svg`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 onMounted(() => {
