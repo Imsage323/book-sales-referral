@@ -106,7 +106,11 @@ async function generate() {
   }
   generating.value = true;
   try {
-    await api.post('/qrcodes', form);
+    const payload: any = { sellerId: form.sellerId };
+    if (form.productId) {
+      payload.productId = form.productId;
+    }
+    await api.post('/qrcodes', payload);
     ElMessage.success('生成成功');
     form.sellerId = '';
     form.productId = '';
