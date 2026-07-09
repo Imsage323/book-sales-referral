@@ -130,10 +130,14 @@ function openDialog(row?: any) {
 
 async function submit() {
   try {
+    const payload = { ...form };
+    if (!payload.parentId) {
+      delete payload.parentId;
+    }
     if (isEdit.value) {
-      await api.patch(`/sellers/${form.id}`, form);
+      await api.patch(`/sellers/${form.id}`, payload);
     } else {
-      await api.post('/sellers', form);
+      await api.post('/sellers', payload);
     }
     ElMessage.success('操作成功');
     dialogVisible.value = false;

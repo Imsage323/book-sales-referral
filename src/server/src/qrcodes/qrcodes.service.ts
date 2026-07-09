@@ -79,7 +79,8 @@ export class QrcodesService {
   async resolve(
     id: string,
   ): Promise<{ seller: any; product: any | null; scene: string }> {
-    const qrcode = await this.findOne(id);
+    const normalizedId = this.normalizeId(id);
+    const qrcode = await this.findOne(normalizedId);
     const seller = await this.sellersService.findOne(qrcode.sellerId);
     if (seller.status !== SellerStatus.ACTIVE) {
       throw new BadRequestException('销售方已停用');
@@ -115,6 +116,13 @@ export class QrcodesService {
         : null,
       scene,
     };
+  }
+
+  private normalizeId(id: string): string {
+    if (/^[0-9a-f]{32}$/i.test(id)) {
+      return `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+    }
+    return id;
   }
 
   private buildScene(id: string): string {

@@ -60,7 +60,7 @@ Page({
         return;
       }
 
-      const product = await get<Product>(`/products/${resolveResult.product.id}/public`);
+      const product = await get<Product>(`/products/public/${resolveResult.product.id}`);
       this.setData({
         product,
         seller: resolveResult.seller,

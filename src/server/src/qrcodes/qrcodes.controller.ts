@@ -53,7 +53,7 @@ export class QrcodesController {
   }
 
   @Get(':id/resolve')
-  resolve(@Param('id', ParseUUIDPipe) id: string) {
+  resolve(@Param('id') id: string) {
     return this.qrcodesService.resolve(id);
   }
 }
