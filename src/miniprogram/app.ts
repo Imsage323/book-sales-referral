@@ -1,6 +1,6 @@
 App({
   globalData: {
-    apiBaseUrl: 'http://localhost:3000/api',
+    apiBaseUrl: 'https://server-278630-6-1450945147.sh.run.tcloudbase.com/api',
   },
   onLaunch() {
     console.log('小程序启动');

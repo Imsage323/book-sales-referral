@@ -1,0 +1,13 @@
+{
+  "name": "book-sales-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.0.0",
+    "typescript": "~5.3.3"
+  }
+}

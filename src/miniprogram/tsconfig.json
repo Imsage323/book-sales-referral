@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "lib": ["ES2016"],
+    "module": "CommonJS",
+    "strict": false,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "types": ["miniprogram-api-typings"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

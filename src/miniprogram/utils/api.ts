@@ -18,7 +18,7 @@ export function request<T = any>(options: ApiRequestOptions): Promise<T> {
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${baseUrl}${options.url}`,
-      method: options.method || 'GET',
+      method: options.method as any,
       data: options.data,
       header: {
         'Content-Type': 'application/json',
