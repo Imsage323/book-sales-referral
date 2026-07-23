@@ -21,11 +21,25 @@ interface WxPaymentParams {
   paySign: string;
 }
 
+const STATUS_TEXT: Record<string, string> = {
+  pending_payment: '待支付',
+  paid: '已支付',
+  address_pending: '待完善地址',
+  shipping_pending: '待发货',
+  shipped: '已发货',
+  aftersale_waiting: '售后观察期',
+  settlement_ready: '已结算',
+  closed: '已关闭',
+  refunded: '已退款',
+  cancelled: '已取消',
+};
+
 Page({
   data: {
     orderId: '',
     groupQrcode: '',
     order: null as OrderInfo | null,
+    statusText: '',
     loading: false,
     paying: false,
   },
@@ -45,7 +59,8 @@ Page({
     this.setData({ loading: true });
     try {
       const detail = await get<OrderDetail>(`/orders/${orderId}`);
-      this.setData({ order: detail.order });
+      const order = detail.order;
+      this.setData({ order, statusText: STATUS_TEXT[order.status] || order.status });
     } catch (err) {
       console.error('load order failed', err);
     } finally {

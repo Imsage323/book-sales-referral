@@ -40,6 +40,12 @@ Page({
     product: null as Product | null,
     seller: null as Seller | null,
     quantity: 1,
+    points: [
+      '每日高考倒计时，关键节点不遗漏',
+      '每天一页升学路径与行动指南',
+      '每周 KISS 复盘，稳住复习节奏',
+      '锦鲤相伴，跃过龙门',
+    ],
   },
 
   onLoad(options: Record<string, string | undefined>) {

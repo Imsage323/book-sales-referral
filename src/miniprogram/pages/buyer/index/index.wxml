@@ -1,36 +1,63 @@
-<view class="container">
-  <view wx:if="{{loading}}">
-    <text>加载中...</text>
-  </view>
+<view class="page">
+  <view wx:if="{{loading}}" class="state-tip">加载中...</view>
 
-  <view wx:elif="{{product}}">
-    <image wx:if="{{product.cover}}" src="{{product.cover}}" mode="aspectFit" style="width: 200px; height: 200px;" />
-    <view>
-      <text>{{product.name}}</text>
-    </view>
-    <view>
-      <text>¥{{product.price / 100}}</text>
-    </view>
-    <view wx:if="{{product.intro}}">
-      <text>{{product.intro}}</text>
-    </view>
-    <view wx:if="{{seller}}">
-      <text>卖家：{{seller.name}}</text>
-      <text>学校：{{seller.school}}</text>
-      <text>地区：{{seller.region}}</text>
+  <block wx:elif="{{product}}">
+    <image class="hero" src="/images/product-hero.jpg" mode="widthFix" />
+
+    <view class="card head-card">
+      <view class="price-line">
+        <text class="price-symbol">¥</text>
+        <text class="price-value">{{product.price / 100}}</text>
+      </view>
+      <view class="book-name">{{product.name}}</view>
+      <view class="book-meta">曲磊 著 · 西北工业大学出版社</view>
+      <view wx:if="{{seller}}" class="seller-line">由 {{seller.name}} 推荐{{seller.school ? ' · ' + seller.school : ''}}</view>
     </view>
 
-    <view>
-      <text>数量：</text>
-      <button size="mini" bindtap="decreaseQuantity">-</button>
-      <input type="number" value="{{quantity}}" bindinput="onQuantityInput" style="display: inline-block; width: 60px; text-align: center;" />
-      <button size="mini" bindtap="increaseQuantity">+</button>
+    <view wx:if="{{product.intro}}" class="card">
+      <view class="section-title">这本书是什么</view>
+      <view class="intro-text">{{product.intro}}</view>
     </view>
 
-    <button type="primary" bindtap="onBuy">立即购买</button>
-  </view>
+    <view class="card">
+      <view class="section-title">每天一页，稳住高三节奏</view>
+      <view class="point" wx:for="{{points}}" wx:key="index">
+        <text class="point-check">✓</text>
+        <text class="point-text">{{item}}</text>
+      </view>
+    </view>
 
-  <view wx:else>
-    <text>未找到产品信息</text>
-  </view>
+    <view class="card">
+      <view class="section-title">内页实拍</view>
+      <image class="detail-img" src="/images/product-detail.jpg" mode="widthFix" />
+      <view class="img-caption">每日倒计时 + 升学路径指引 + 笔记区</view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">质感与厚度</view>
+      <image class="detail-img" src="/images/product-stack.jpg" mode="widthFix" />
+      <view class="img-caption">精装厚册，陪伴高三一整年</view>
+    </view>
+
+    <view class="card quantity-card">
+      <text class="quantity-label">购买数量</text>
+      <view class="stepper">
+        <button class="step-btn" bindtap="decreaseQuantity">−</button>
+        <input class="step-input" type="number" value="{{quantity}}" bindinput="onQuantityInput" />
+        <button class="step-btn" bindtap="increaseQuantity">＋</button>
+      </view>
+    </view>
+
+    <view class="bottom-spacer"></view>
+
+    <view class="buy-bar">
+      <view class="buy-price">
+        <text class="buy-symbol">¥</text>
+        <text class="buy-value">{{product.price * quantity / 100}}</text>
+      </view>
+      <button class="buy-btn" bindtap="onBuy">立即购买</button>
+    </view>
+  </block>
+
+  <view wx:else class="state-tip">未找到产品信息</view>
 </view>
