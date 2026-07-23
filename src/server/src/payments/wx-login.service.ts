@@ -15,7 +15,7 @@ export class WxLoginService {
   getDiag() {
     const { appid, secret } = getWxConfig();
     return {
-      version: 'wx-login-v2',
+      version: 'wx-login-v3',
       hasAppid: Boolean(appid),
       hasSecret: Boolean(secret),
       appidTail: appid ? appid.slice(-6) : '',
@@ -80,6 +80,10 @@ export class WxLoginService {
           method: 'GET',
           timeout: 10000,
           headers: { Accept: 'application/json' },
+          // 微信云托管开启「开放接口服务」时，对 api.weixin.qq.com 走 VPC 代理，
+          // 证书为代理自签，Node 默认校验会报 self-signed certificate。
+          // 仅针对微信域名关闭校验；公网直连官方证书时同样可工作。
+          rejectUnauthorized: false,
         },
         (res) => {
           const chunks: Buffer[] = [];

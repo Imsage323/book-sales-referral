@@ -49,7 +49,7 @@ describe('Payments (e2e)', () => {
 
   it('GET /api/wx/diag returns login module version fingerprint', async () => {
     const res = await request(app.getHttpServer()).get('/api/wx/diag').expect(200);
-    expect(res.body.version).toBe('wx-login-v2');
+    expect(res.body.version).toBe('wx-login-v3');
     expect(res.body.hasAppid).toBe(false);
     expect(res.body.hasSecret).toBe(false);
   });

@@ -183,7 +183,8 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
-- 2026-07-23：联调点购买仍 toast「Internal server error」；探测线上 login 仍为无 timestamp 的裸 500（说明上一版加固可能未生效或异常未进 HttpExceptionFilter）。再加固：增加 `GET /api/wx/diag` 版本探针 `wx-login-v2`、login 全路径捕获、小程序 api 控制台打印完整错误
+- 2026-07-23：login 已到可读错误：`self-signed certificate`（云托管「开放接口服务」代理 api.weixin.qq.com 自签证书）。代码对微信域名 `rejectUnauthorized:false`（diag 升为 wx-login-v3）；官方亦建议自行 jscode2session 时关闭开放接口服务后重新发布
+- 2026-07-23：联调点购买仍 toast「Internal server error」；探测线上 login 仍为无 timestamp 的裸 500（说明上一版加固可能未生效或异常未进 HttpExceptionFilter）。再加固：增加 `GET /api/wx/diag` 版本探针、login 全路径捕获、小程序 api 控制台打印完整错误
 - 2026-07-23：联调中产品页可加载；点购买失败因 `/api/wx/login` 500。加固 `wx-login.service`（Node https、超时、网络/业务错误分别 503/400 并回传原因），便于区分 Secret 错误与云托管出网问题
 - 2026-07-23：用户确认云托管 `WX_*` 环境变量已配置；探测线上 `POST /api/wx/*` 曾为 404，已 push 支付模块后路由恢复（notify 401 缺签名头为预期）；回调入口可达，登录换 openid 仍待修
 - 2026-07-23：Phase 3.2 微信支付真实集成代码完成——新增 `payments` 模块（JSAPI 下单、回调验签解密、主动对账、wx.login 换 openid）、订单 mock/真实双模式、小程序端 `wx.requestPayment` 接入；修复 `wechatpay-axios-plugin` 运行时导入错误（`WechatpayAxiosPlugin` 命名空间仅存在于类型声明）；单测 24 个、E2E 30 个全部通过
