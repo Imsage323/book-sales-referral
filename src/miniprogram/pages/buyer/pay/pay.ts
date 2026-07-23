@@ -12,6 +12,15 @@ interface OrderDetail {
   order: OrderInfo;
 }
 
+interface WxPaymentParams {
+  appId: string;
+  timeStamp: string;
+  nonceStr: string;
+  package: string;
+  signType: 'RSA';
+  paySign: string;
+}
+
 Page({
   data: {
     orderId: '',
@@ -52,14 +61,39 @@ Page({
     }
     this.setData({ paying: true });
     try {
-      await post(`/orders/${orderId}/pay`, {});
+      // mock 模式后端直接返回订单（无 paySign）；真实模式返回 wx.requestPayment 参数
+      const result = await post<WxPaymentParams | Record<string, never>>(
+        `/orders/${orderId}/pay`,
+        {},
+      );
+      if (result && (result as WxPaymentParams).paySign) {
+        const params = result as WxPaymentParams;
+        await new Promise<void>((resolve, reject) => {
+          wx.requestPayment({
+            timeStamp: params.timeStamp,
+            nonceStr: params.nonceStr,
+            package: params.package,
+            signType: 'RSA',
+            paySign: params.paySign,
+            success: () => resolve(),
+            fail: (err) => reject(err),
+          });
+        });
+        // 主动对账，防止支付回调延迟/丢失导致订单卡住
+        await post(`/orders/${orderId}/pay-sync`, {});
+      }
       wx.showToast({ title: '支付成功', icon: 'success' });
       wx.navigateTo({
         url: `/pages/buyer/address/address?orderId=${orderId}&groupQrcode=${encodeURIComponent(groupQrcode)}`,
       });
-    } catch (err) {
-      console.error('pay failed', err);
-      wx.showToast({ title: '支付失败，请重试', icon: 'none' });
+    } catch (err: any) {
+      if (err && typeof err.errMsg === 'string' && err.errMsg.indexOf('cancel') >= 0) {
+        // 用户取消支付，停留当前页可重试
+        wx.showToast({ title: '已取消支付', icon: 'none' });
+      } else {
+        console.error('pay failed', err);
+        wx.showToast({ title: '支付失败，请重试', icon: 'none' });
+      }
     } finally {
       this.setData({ paying: false });
     }

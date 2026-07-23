@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -11,6 +11,8 @@ import { OrderAddressDto } from './dto/order-address.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
+import { WxPayService, WxJsapiPaymentParams, WxNotifyPlaintext } from '../payments/wx-pay.service';
+import { isWxPayEnabled } from '../config/wx.config';
 import { generateOrderNo } from './order-number.generator';
 
 @Injectable()
@@ -26,6 +28,8 @@ export class OrdersService {
     private readonly sellerRepo: Repository<Seller>,
     @InjectRepository(PaymentEvent)
     private readonly paymentEventRepo: Repository<PaymentEvent>,
+    @Inject(forwardRef(() => WxPayService))
+    private readonly wxPayService: WxPayService,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<Order> {
@@ -143,7 +147,11 @@ export class OrdersService {
     return this.orderRepo.save(order);
   }
 
-  async payOrder(id: string): Promise<Order> {
+  /**
+   * mock 模式（WX_PAY_ENABLED 未开启或密钥不全）：直接置为已支付，返回订单；
+   * 真实模式：调微信 JSAPI 下单，返回 wx.requestPayment 支付参数（不置 paid，等回调/对账）。
+   */
+  async payOrder(id: string): Promise<Order | WxJsapiPaymentParams> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) {
       throw new NotFoundException('订单不存在');
@@ -152,9 +160,75 @@ export class OrdersService {
       throw new BadRequestException('订单当前状态不允许支付');
     }
 
+    if (isWxPayEnabled()) {
+      return this.wxPayService.createJsapiOrder(order, '高三学业生涯导航日历');
+    }
+
+    const rawBody = JSON.stringify({
+      type: 'mock_payment',
+      orderId: order.id,
+      orderNo: order.orderNo,
+      totalAmount: order.totalAmount,
+    });
+    return this.markPaid(order, `MOCK-${order.orderNo}-${Date.now()}`, rawBody);
+  }
+
+  /** 主动对账：微信侧已支付则按回调同样逻辑落库（幂等） */
+  async syncPayment(id: string): Promise<Order> {
+    const order = await this.orderRepo.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+    if (order.status !== OrderStatus.PENDING_PAYMENT || !isWxPayEnabled()) {
+      return order;
+    }
+
+    const result = await this.wxPayService.queryByOutTradeNo(order.orderNo);
+    if (
+      result.trade_state === 'SUCCESS' &&
+      WxPayService.isAmountMatched(result.amount?.total, order.totalAmount)
+    ) {
+      return this.markPaid(
+        order,
+        result.transaction_id,
+        JSON.stringify({ type: 'pay_sync', ...result }),
+      );
+    }
+    return order;
+  }
+
+  /** 支付回调落库：幂等 + 金额校验，金额不一致记录事件后抛错让微信重试 */
+  async handleWxNotify(plaintext: WxNotifyPlaintext, rawBody: string): Promise<void> {
+    const order = await this.orderRepo.findOne({ where: { orderNo: plaintext.out_trade_no } });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      return; // 已支付/已关闭等状态直接幂等返回
+    }
+    if (plaintext.trade_state !== 'SUCCESS') {
+      return; // 非成功状态不落库
+    }
+    if (!WxPayService.isAmountMatched(plaintext.amount?.total, order.totalAmount)) {
+      await this.paymentEventRepo.save(
+        this.paymentEventRepo.create({
+          orderNo: order.orderNo,
+          amount: plaintext.amount?.total,
+          result: 'AMOUNT_MISMATCH',
+          verified: false,
+          rawBody,
+        }),
+      );
+      throw new BadRequestException('回调金额与订单金额不一致');
+    }
+    await this.markPaid(order, plaintext.transaction_id, rawBody);
+  }
+
+  /** 置为已支付并写入支付事件（mock 支付 / 回调 / 对账共用） */
+  private async markPaid(order: Order, transactionId: string, rawBody: string): Promise<Order> {
     order.status = OrderStatus.PAID;
     order.paidAt = new Date();
-    order.wxTransactionId = `MOCK-${order.orderNo}-${Date.now()}`;
+    order.wxTransactionId = transactionId;
     await this.orderRepo.save(order);
 
     const paymentEvent = this.paymentEventRepo.create({
@@ -162,13 +236,7 @@ export class OrdersService {
       amount: order.totalAmount,
       result: 'SUCCESS',
       verified: true,
-      rawBody: JSON.stringify({
-        type: 'mock_payment',
-        orderId: order.id,
-        orderNo: order.orderNo,
-        totalAmount: order.totalAmount,
-        paidAt: order.paidAt.toISOString(),
-      }),
+      rawBody,
     });
     await this.paymentEventRepo.save(paymentEvent);
 

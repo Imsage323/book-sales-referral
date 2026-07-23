@@ -7,7 +7,8 @@ import { AdminRole } from './admin-users/entities/admin-user.entity';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: 微信支付回调验签需要原始报文
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

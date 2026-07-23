@@ -7,13 +7,36 @@ import { OrderAddress } from './entities/order-address.entity';
 import { Product } from '../products/entities/product.entity';
 import { Seller, SellerStatus } from '../sellers/entities/seller.entity';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
+import { WxPayService } from '../payments/wx-pay.service';
+
+const WX_ENV_KEYS = [
+  'WX_PAY_ENABLED',
+  'WX_APPID',
+  'WX_MCHID',
+  'WX_PAY_SERIAL_NO',
+  'WX_PAY_APIV3_KEY',
+  'WX_PAY_PRIVATE_KEY',
+  'WX_PAY_PUBLIC_KEY_ID',
+  'WX_PAY_PUBLIC_KEY',
+  'WX_PAY_NOTIFY_URL',
+] as const;
 
 describe('OrdersService', () => {
   let service: OrdersService;
   let orderRepo: Repository<Order>;
   let paymentEventRepo: Repository<PaymentEvent>;
+  let wxPayService: { createJsapiOrder: jest.Mock; queryByOutTradeNo: jest.Mock };
+  let envBackup: Record<string, string | undefined>;
 
   beforeEach(async () => {
+    envBackup = Object.fromEntries(WX_ENV_KEYS.map((k) => [k, process.env[k]]));
+    WX_ENV_KEYS.forEach((k) => delete process.env[k]);
+
+    wxPayService = {
+      createJsapiOrder: jest.fn(),
+      queryByOutTradeNo: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
@@ -37,12 +60,26 @@ describe('OrdersService', () => {
           provide: getRepositoryToken(PaymentEvent),
           useClass: Repository,
         },
+        {
+          provide: WxPayService,
+          useValue: wxPayService,
+        },
       ],
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
     orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
     paymentEventRepo = module.get<Repository<PaymentEvent>>(getRepositoryToken(PaymentEvent));
+  });
+
+  afterEach(() => {
+    WX_ENV_KEYS.forEach((k) => {
+      if (envBackup[k] === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = envBackup[k];
+      }
+    });
   });
 
   it('should mark order as paid, set paidAt and wxTransactionId, and record payment event', async () => {
@@ -60,7 +97,7 @@ describe('OrdersService', () => {
     jest.spyOn(paymentEventRepo, 'create').mockImplementation((dto: any) => dto as PaymentEvent);
     jest.spyOn(paymentEventRepo, 'save').mockImplementation(async (dto: any) => dto);
 
-    const result = await service.payOrder('order-id');
+    const result = (await service.payOrder('order-id')) as Order;
 
     expect(result.status).toBe(OrderStatus.PAID);
     expect(result.paidAt).toBeInstanceOf(Date);
@@ -86,5 +123,79 @@ describe('OrdersService', () => {
     jest.spyOn(orderRepo, 'findOne').mockResolvedValue(null);
 
     await expect(service.payOrder('missing-id')).rejects.toThrow('订单不存在');
+  });
+
+  it('should return wx payment params without marking paid when WX_PAY_ENABLED and keys are set', async () => {
+    process.env.WX_PAY_ENABLED = 'true';
+    process.env.WX_APPID = 'wx-appid';
+    process.env.WX_MCHID = 'mchid';
+    process.env.WX_PAY_SERIAL_NO = 'serial';
+    process.env.WX_PAY_APIV3_KEY = 'a'.repeat(32);
+    process.env.WX_PAY_PRIVATE_KEY = 'pem';
+    process.env.WX_PAY_PUBLIC_KEY_ID = 'pub-key-id';
+    process.env.WX_PAY_PUBLIC_KEY = 'pem';
+    process.env.WX_PAY_NOTIFY_URL = 'https://example.com/api/wx/notify';
+
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PENDING_PAYMENT,
+      totalAmount: 200,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save');
+    const paymentParams = {
+      appId: 'wx-appid',
+      timeStamp: '1720000000',
+      nonceStr: 'nonce',
+      package: 'prepay_id=wx-prepay',
+      signType: 'RSA' as const,
+      paySign: 'sign',
+    };
+    wxPayService.createJsapiOrder.mockResolvedValue(paymentParams);
+
+    const result = await service.payOrder('order-id');
+
+    expect(result).toEqual(paymentParams);
+    expect(order.status).toBe(OrderStatus.PENDING_PAYMENT);
+    expect(orderRepo.save).not.toHaveBeenCalled();
+    expect(wxPayService.createJsapiOrder).toHaveBeenCalledWith(order, expect.any(String));
+  });
+
+  it('should mark paid via syncPayment when wx side reports SUCCESS', async () => {
+    process.env.WX_PAY_ENABLED = 'true';
+    process.env.WX_APPID = 'wx-appid';
+    process.env.WX_MCHID = 'mchid';
+    process.env.WX_PAY_SERIAL_NO = 'serial';
+    process.env.WX_PAY_APIV3_KEY = 'a'.repeat(32);
+    process.env.WX_PAY_PRIVATE_KEY = 'pem';
+    process.env.WX_PAY_PUBLIC_KEY_ID = 'pub-key-id';
+    process.env.WX_PAY_PUBLIC_KEY = 'pem';
+    process.env.WX_PAY_NOTIFY_URL = 'https://example.com/api/wx/notify';
+
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PENDING_PAYMENT,
+      totalAmount: 200,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save').mockImplementation(async (o: any) => o);
+    jest.spyOn(paymentEventRepo, 'create').mockImplementation((dto: any) => dto as PaymentEvent);
+    jest.spyOn(paymentEventRepo, 'save').mockImplementation(async (dto: any) => dto);
+    wxPayService.queryByOutTradeNo.mockResolvedValue({
+      out_trade_no: order.orderNo,
+      transaction_id: 'wx-tx-1',
+      trade_state: 'SUCCESS',
+      amount: { total: 200 },
+    });
+
+    const result = await service.syncPayment('order-id');
+
+    expect(result.status).toBe(OrderStatus.PAID);
+    expect(result.wxTransactionId).toBe('wx-tx-1');
+    expect(wxPayService.queryByOutTradeNo).toHaveBeenCalledWith(order.orderNo);
   });
 });

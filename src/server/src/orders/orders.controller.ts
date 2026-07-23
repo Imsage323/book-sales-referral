@@ -58,4 +58,9 @@ export class OrdersController {
   pay(@Param('id', ParseUUIDPipe) id: string, @Body() _dto: PayOrderDto) {
     return this.ordersService.payOrder(id);
   }
+
+  @Post(':id/pay-sync')
+  paySync(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.syncPayment(id);
+  }
 }

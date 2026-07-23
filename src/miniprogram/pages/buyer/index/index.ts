@@ -1,4 +1,5 @@
 import { get, post } from '../../../utils/api';
+import type { AppOption } from '../../../app';
 
 interface Seller {
   id: string;
@@ -77,9 +78,10 @@ Page({
 
   async recordScanLog(sellerCode: string, scene: string, productId: string) {
     try {
+      const openid = await getApp<AppOption>().ensureOpenid();
       await post('/scan-logs', {
         sellerCode,
-        openid: 'mp-openid-placeholder',
+        openid,
         scene,
         productId,
       });
@@ -112,10 +114,11 @@ Page({
       return;
     }
     try {
+      const openid = await getApp<AppOption>().ensureOpenid();
       const order = await post<Order>('/orders', {
         productId: product.id,
         sellerId: seller.id,
-        openid: 'mp-openid-placeholder',
+        openid,
         quantity,
       });
       const groupQrcode = product.groupQrcode || '';

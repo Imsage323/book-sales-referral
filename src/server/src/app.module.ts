@@ -14,6 +14,7 @@ import { ProductsModule } from './products/products.module';
 import { QrcodesModule } from './qrcodes/qrcodes.module';
 import { ScanLogsModule } from './scan-logs/scan-logs.module';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { RewardsModule } from './rewards/rewards.module';
@@ -37,6 +38,7 @@ import { OperationLogInterceptor } from './operation-logs/operation-log.intercep
     QrcodesModule,
     ScanLogsModule,
     OrdersModule,
+    PaymentsModule,
     ShipmentsModule,
     LedgerModule,
     RewardsModule,

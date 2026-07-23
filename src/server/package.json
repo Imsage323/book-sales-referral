@@ -42,6 +42,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "typeorm": "^1.0.0",
+    "wechatpay-axios-plugin": "^0.9.6",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

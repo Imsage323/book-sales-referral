@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**Phase 3.2（真实化）：微信支付真实集成** — 阻塞中（待 ICP 备案、微信认证、商户号）
+**Phase 3.2（真实化）：微信支付真实集成** — 代码已完成并通过测试，待微信支付商户号申请完成、密钥配置后联调
 
 ## 已完成
 
@@ -70,12 +70,19 @@
 - [x] 管理后台生产环境 API 地址配置（`.env.production`）
 - [x] 管理后台静态构建产物（`src/admin/dist`）
 - [x] 管理后台集成到后端服务（`@nestjs/serve-static` 静态文件服务 + 仓库根目录 `Dockerfile` 多阶段构建）
+- [x] 微信支付真实集成（mock/真实双模式，`WX_PAY_ENABLED` + 密钥齐全时走真实支付）
+  - `wx.config.ts` 集中读取 `WX_*` 环境变量，`main.ts` 开启 `rawBody`
+  - `payments` 模块：JSAPI 下单、`wx.requestPayment` 参数二次签名、回调验签 + AES-256-GCM 解密、按商户订单号主动查询（官方 `wechatpay-axios-plugin`，微信支付公钥模式）
+  - `POST /api/wx/login`（code 换 openid，未配置时返回占位 openid）与 `POST /api/wx/notify`（验签失败 401 + FAIL，成功幂等落库）
+  - 订单侧：`payOrder` 真实模式返回支付参数不置 paid、`POST :id/pay-sync` 主动对账、`markPaid` 回调/对账/mock 共用
+  - 小程序端：启动静默登录缓存 openid、下单/扫码日志用真实 openid、支付页接入 `wx.requestPayment` + 对账，兼容 mock 模式
 
 ## 验证结果
 
 - `cd src/server && npm run build` ✅ 通过
-- `cd src/server && npm run test` ✅ 通过（15 个单元测试）
-- `cd src/server && npm run test:e2e` ✅ 25 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger + settlements + reward-rules + reward-records）
+- `cd src/server && npm run test` ✅ 通过（24 个单元测试，含 wx-pay 签名/验签解密/金额校验与 orders 真实模式用例）
+- `cd src/server && npm run test:e2e` ✅ 30 个测试通过（auth + sellers + products + qrcodes + scan-logs + orders + shipments + ledger + settlements + reward-rules + reward-records + payments）
+- `cd src/miniprogram && npm run build` ✅ 通过
 - `cd src/admin && npm run build` ✅ 通过
 - `cd src/admin && npm run build` ✅ 通过
 - 本地验证后端 `/api/auth/login` ✅ 通过
@@ -114,13 +121,14 @@ JWT_EXPIRES_IN=7d
 - [x] 在微信云托管创建/连接 MySQL 数据库并运行首次迁移
 - [x] 验证云托管后端服务可访问（健康检查或登录接口）
 
-**Phase 3.2（真实化）：微信支付真实集成**
+**Phase 3.2（真实化）：微信支付真实集成** ✅ 代码完成（真实联调待商户号密钥）
 
-- [ ] 微信小程序登录获取真实 `openid`
-- [ ] 微信支付统一下单接口（接入商户号 / APIv3）
-- [ ] 微信支付回调处理（验签、幂等、更新订单状态）
-- [ ] 小程序端调用 `wx.requestPayment` 调起微信支付
-- [ ] 替换模拟支付单号生成逻辑，写入真实 `wxTransactionId`
+- [x] 微信小程序登录获取真实 `openid`（`POST /api/wx/login`，未配置时占位 openid 保底）
+- [x] 微信支付统一下单接口（接入商户号 / APIv3，JSAPI 下单 + 支付参数二次签名）
+- [x] 微信支付回调处理（验签、幂等、金额校验、更新订单状态）
+- [x] 小程序端调用 `wx.requestPayment` 调起微信支付（含取消重试与 `pay-sync` 主动对账）
+- [x] 替换模拟支付单号生成逻辑，写入真实 `wxTransactionId`（mock 模式保留供本地开发与测试）
+- [ ] 真实密钥配置到云托管并联调（待商户号申请通过）
 
 **Phase 3.3：售后观察期与返点** ✅ 已完成
 
@@ -139,14 +147,19 @@ JWT_EXPIRES_IN=7d
 
 ## 阻塞
 
-无
+- Phase 3.2 真实微信支付集成：唯一硬阻塞是**微信支付商户号**（mchid、APIv3 密钥、商户证书），用户可申请（小程序后台 → 微信支付）。小程序备案可与开发并行（上架前完成即可）；后端使用云托管默认域名时 ICP 备案不强阻塞开发。
 
 ## 待确认
 
 - [x] 书名、是否允许多本购买：书名《高三学业生涯导航日历》，允许多本购买
 - [ ] 售价（暂用占位价 0.01 元）
 - [x] 返点规则：已使用占位规则（默认销售奖励 1 分/本、推荐奖励 0.5 分/本），后续可替换为真实规则
-- [ ] 微信认证、商户号、支付回调域名准备情况
+- [x] 出版物经营许可证：已取得
+- [x] 微信认证：已完成（小程序信息、类目、认证均已通过，2026-07-21 截图确认）
+- [ ] 微信支付商户号：待申请（小程序后台 → 微信支付；开发真实支付的硬前置）
+- [ ] 域名 ICP 备案：进行中（用户侧办理中；自有域名/回调域名需要，云托管默认域名不强依赖）
+- [ ] 微信小程序备案：未备案（可与开发并行，上架发布前完成即可）
+- [ ] 抖店渠道：资质审核与铺货进行中（用户侧）；抖店订单是否纳入本系统台账/返点体系待评估
 - [ ] 入群二维码维护方式
 - [ ] 快递公司选择
 
@@ -167,6 +180,9 @@ JWT_EXPIRES_IN=7d
 
 ## 最近更新
 
+- 2026-07-23：Phase 3.2 微信支付真实集成代码完成——新增 `payments` 模块（JSAPI 下单、回调验签解密、主动对账、wx.login 换 openid）、订单 mock/真实双模式、小程序端 `wx.requestPayment` 接入；修复 `wechatpay-axios-plugin` 运行时导入错误（`WechatpayAxiosPlugin` 命名空间仅存在于类型声明）；单测 24 个、E2E 30 个全部通过，真实联调待商户号密钥
+- 2026-07-21：确认小程序信息/类目/微信认证已完成；澄清 Phase 3.2 阻塞项——小程序备案可与开发并行，ICP 备案对云托管默认域名不强依赖，唯一硬前置是微信支付商户号（待用户申请）
+- 2026-07-21：同步用户侧资质进展：出版物经营许可证已取得，域名 ICP 备案进行中，微信小程序备案待办，抖店资质审核与铺货进行中
 - 2026-07-09：修复管理后台新增销售方 parentId 空字符串校验、二维码解析 UUID 格式兼容、小程序产品详情 API 路径、二维码图片 URL 列长度不足导致生成失败的问题
 - 2026-07-07：修复管理后台登录提示"用户名或密码错误"的问题，后端启动时自动创建默认管理员账号 `admin / admin123456`
 - 2026-07-07：管理后台集成到后端服务完成，后端容器统一托管管理后台静态文件，API 地址改为相对路径 `/api`，本地 API 和前端路由验证通过
