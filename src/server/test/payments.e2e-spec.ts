@@ -47,11 +47,18 @@ describe('Payments (e2e)', () => {
     await app.close();
   });
 
+  it('GET /api/wx/diag returns login module version fingerprint', async () => {
+    const res = await request(app.getHttpServer()).get('/api/wx/diag').expect(200);
+    expect(res.body.version).toBe('wx-login-v2');
+    expect(res.body.hasAppid).toBe(false);
+    expect(res.body.hasSecret).toBe(false);
+  });
+
   it('POST /api/wx/login returns placeholder openid when appid/secret not configured', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/wx/login')
       .send({ code: 'test-code' })
-      .expect(201);
+      .expect(200);
 
     expect(res.body.openid).toBe('dev-openid-test-code');
   });

@@ -11,73 +11,103 @@ import { getWxConfig } from '../config/wx.config';
 export class WxLoginService {
   private readonly logger = new Logger(WxLoginService.name);
 
+  /** 部署探针用：确认当前实例是否包含登录加固版本（不泄露密钥） */
+  getDiag() {
+    const { appid, secret } = getWxConfig();
+    return {
+      version: 'wx-login-v2',
+      hasAppid: Boolean(appid),
+      hasSecret: Boolean(secret),
+      appidTail: appid ? appid.slice(-6) : '',
+    };
+  }
+
   /** wx.login 的 code 换 openid；未配置 AppID/Secret 时返回占位 openid 保持本地开发可用 */
   async code2session(code: string): Promise<{ openid: string }> {
-    const { appid, secret } = getWxConfig();
-    if (!appid || !secret) {
-      return { openid: `dev-openid-${code}` };
-    }
-
-    const url =
-      'https://api.weixin.qq.com/sns/jscode2session' +
-      `?appid=${encodeURIComponent(appid)}` +
-      `&secret=${encodeURIComponent(secret)}` +
-      `&js_code=${encodeURIComponent(code)}` +
-      '&grant_type=authorization_code';
-
-    let data: {
-      openid?: string;
-      session_key?: string;
-      errcode?: number;
-      errmsg?: string;
-    };
     try {
-      data = await this.getJson(url);
+      const { appid, secret } = getWxConfig();
+      if (!appid || !secret) {
+        return { openid: `dev-openid-${code}` };
+      }
+
+      const path =
+        '/sns/jscode2session' +
+        `?appid=${encodeURIComponent(appid)}` +
+        `&secret=${encodeURIComponent(secret)}` +
+        `&js_code=${encodeURIComponent(code)}` +
+        '&grant_type=authorization_code';
+
+      const data = await this.getJson('api.weixin.qq.com', path);
+
+      if (!data || typeof data !== 'object') {
+        throw new ServiceUnavailableException(
+          '微信登录接口返回异常，请检查云托管出网',
+        );
+      }
+
+      if (!data.openid) {
+        this.logger.warn(`jscode2session 失败: ${JSON.stringify(data)}`);
+        const detail =
+          data.errmsg ||
+          (data.errcode != null
+            ? `微信登录失败(errcode=${data.errcode})`
+            : '微信登录失败');
+        throw new BadRequestException(detail);
+      }
+
+      return { openid: data.openid };
     } catch (err) {
+      if (
+        err instanceof BadRequestException ||
+        err instanceof ServiceUnavailableException
+      ) {
+        throw err;
+      }
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`jscode2session 网络/解析失败: ${message}`);
-      // 常见：云托管未开公网出站、DNS/TLS 失败
+      this.logger.error(`jscode2session 未预期异常: ${message}`);
       throw new ServiceUnavailableException(
         `无法访问微信登录接口: ${message}`,
       );
     }
-
-    if (!data.openid) {
-      this.logger.warn(`jscode2session 失败: ${JSON.stringify(data)}`);
-      throw new BadRequestException(
-        data.errmsg ||
-          (data.errcode != null
-            ? `微信登录失败(errcode=${data.errcode})`
-            : '微信登录失败'),
-      );
-    }
-    return { openid: data.openid };
   }
 
-  /** 使用 Node https，避免部分运行环境 fetch 异常时只抛裸 500 */
-  private getJson(url: string): Promise<any> {
+  private getJson(host: string, path: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const req = https.get(url, { timeout: 10000 }, (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => {
-          const raw = Buffer.concat(chunks).toString('utf8');
-          if ((res.statusCode || 0) >= 500) {
-            reject(new Error(`微信接口 HTTP ${res.statusCode}: ${raw.slice(0, 200)}`));
-            return;
-          }
-          try {
-            resolve(JSON.parse(raw));
-          } catch {
-            reject(new Error(`微信接口返回非 JSON: ${raw.slice(0, 200)}`));
-          }
-        });
-      });
+      const req = https.request(
+        {
+          host,
+          path,
+          method: 'GET',
+          timeout: 10000,
+          headers: { Accept: 'application/json' },
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () => {
+            const raw = Buffer.concat(chunks).toString('utf8');
+            if ((res.statusCode || 0) >= 500) {
+              reject(
+                new Error(
+                  `微信接口 HTTP ${res.statusCode}: ${raw.slice(0, 200)}`,
+                ),
+              );
+              return;
+            }
+            try {
+              resolve(JSON.parse(raw));
+            } catch {
+              reject(new Error(`微信接口返回非 JSON: ${raw.slice(0, 200)}`));
+            }
+          });
+        },
+      );
       req.on('timeout', () => {
         req.destroy();
         reject(new Error('连接微信登录接口超时'));
       });
       req.on('error', (err) => reject(err));
+      req.end();
     });
   }
 }

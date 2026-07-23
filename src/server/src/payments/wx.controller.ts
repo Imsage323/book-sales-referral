@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpException,
   InternalServerErrorException,
@@ -26,13 +27,29 @@ export class WxController {
     private readonly ordersService: OrdersService,
   ) {}
 
+  /** 部署探针：确认登录加固版本是否在线（不泄露密钥） */
+  @Get('diag')
+  diag() {
+    return this.wxLoginService.getDiag();
+  }
+
   /** 小程序静默登录：wx.login 的 code 换 openid */
   @Post('login')
-  login(@Body('code') code: string) {
+  @HttpCode(200)
+  async login(@Body('code') code: string) {
     if (!code) {
       throw new BadRequestException('缺少 code');
     }
-    return this.wxLoginService.code2session(code);
+    try {
+      return await this.wxLoginService.code2session(code);
+    } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`wx login 未捕获异常: ${message}`);
+      throw new BadRequestException(`微信登录异常: ${message}`);
+    }
   }
 
   /**

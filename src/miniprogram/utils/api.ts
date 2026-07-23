@@ -28,8 +28,17 @@ export function request<T = any>(options: ApiRequestOptions): Promise<T> {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else {
-          const message = (res.data && (res.data as any).message) || `请求失败: ${res.statusCode}`;
-          wx.showToast({ title: message, icon: 'none' });
+          const data = res.data as any;
+          let message = data && data.message;
+          if (Array.isArray(message)) {
+            message = message.join('; ');
+          }
+          if (typeof message !== 'string' || !message) {
+            message = `请求失败: ${res.statusCode}`;
+          }
+          // 控制台看完整错误；toast 最长约 14 字会截断，长文案以控制台为准
+          console.error('[api]', options.method || 'GET', options.url, res.statusCode, data);
+          wx.showToast({ title: String(message).slice(0, 40), icon: 'none', duration: 3500 });
           reject(new Error(message));
         }
       },
