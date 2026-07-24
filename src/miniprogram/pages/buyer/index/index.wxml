@@ -34,21 +34,17 @@
       <view class="img-caption">外观：精装厚册，陪伴高三一整年</view>
     </view>
 
-    <view class="card quantity-card">
-      <text class="quantity-label">购买数量</text>
-      <view class="stepper">
-        <button class="step-btn" bindtap="decreaseQuantity">−</button>
-        <input class="step-input" type="number" value="{{quantity}}" bindinput="onQuantityInput" />
-        <button class="step-btn" bindtap="increaseQuantity">＋</button>
-      </view>
-    </view>
-
     <view class="bottom-spacer"></view>
 
     <view class="buy-bar">
       <view class="buy-price">
         <text class="buy-symbol">¥</text>
         <text class="buy-value">{{product.price * quantity / 100}}</text>
+      </view>
+      <view class="stepper bar-stepper">
+        <button class="step-btn" bindtap="decreaseQuantity">−</button>
+        <input class="step-input" type="number" value="{{quantity}}" bindinput="onQuantityInput" />
+        <button class="step-btn" bindtap="increaseQuantity">＋</button>
       </view>
       <button class="buy-btn" bindtap="onBuy">立即购买</button>
     </view>
