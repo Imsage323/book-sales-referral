@@ -21,7 +21,12 @@ export class AuthService {
     if (user.status !== 'active') {
       throw new UnauthorizedException('账号已禁用');
     }
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      tokenType: 'admin',
+    };
     return { accessToken: this.jwtService.sign(payload) };
   }
 }

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { createBuyerOrder, loginBuyer } from './buyer-test.helper';
 
 jest.setTimeout(30000);
 
@@ -11,6 +12,7 @@ describe('ShipmentsController (e2e)', () => {
   let sellerId: string;
   let productId: string;
   let orderId: string;
+  let buyerToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -38,9 +40,11 @@ describe('ShipmentsController (e2e)', () => {
       .send({ name: 'Shipment Test Product', price: 100 });
     productId = productRes.body.id;
 
-    const orderRes = await request(app.getHttpServer())
-      .post('/api/orders')
-      .send({ productId, sellerId, openid: 'test-openid' });
+    buyerToken = await loginBuyer(app, 'shipments-buyer');
+    const orderRes = await createBuyerOrder(app, buyerToken, {
+      productId,
+      sellerId,
+    });
     orderId = orderRes.body.id;
 
     await request(app.getHttpServer())
@@ -49,7 +53,8 @@ describe('ShipmentsController (e2e)', () => {
       .send({ status: 'paid' });
 
     await request(app.getHttpServer())
-      .patch(`/api/orders/${orderId}/address`)
+      .patch(`/api/buyer/orders/${orderId}/address`)
+      .set('Authorization', `Bearer ${buyerToken}`)
       .send({
         recipient: '张三',
         phone: '13800138000',
@@ -79,6 +84,7 @@ describe('ShipmentsController (e2e)', () => {
 
     const orderRes = await request(app.getHttpServer())
       .get(`/api/orders/${orderId}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(orderRes.body.order.status).toBe('aftersale_waiting');
   });

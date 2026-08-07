@@ -11,8 +11,8 @@ export class ScanLogsService {
     private readonly repo: Repository<ScanLog>,
   ) {}
 
-  async create(dto: CreateScanLogDto): Promise<ScanLog> {
-    const log = this.repo.create(dto);
+  async create(dto: CreateScanLogDto, openid: string): Promise<ScanLog> {
+    const log = this.repo.create({ ...dto, openid });
     return this.repo.save(log);
   }
 }

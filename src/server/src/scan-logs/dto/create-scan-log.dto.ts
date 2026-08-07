@@ -13,10 +13,6 @@ export class CreateScanLogDto {
   @IsUUID()
   productId?: string;
 
-  @IsNotEmpty()
-  @IsString()
-  openid: string;
-
   @IsOptional()
   @IsString()
   scene?: string;

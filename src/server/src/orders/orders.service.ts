@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -11,8 +18,12 @@ import { OrderAddressDto } from './dto/order-address.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
-import { WxPayService, WxJsapiPaymentParams, WxNotifyPlaintext } from '../payments/wx-pay.service';
-import { isWxPayEnabled } from '../config/wx.config';
+import {
+  WxPayService,
+  WxJsapiPaymentParams,
+  WxNotifyPlaintext,
+} from '../payments/wx-pay.service';
+import { isWxPayEnabled, isWxPayMockEnabled } from '../config/wx.config';
 import { generateOrderNo } from './order-number.generator';
 
 @Injectable()
@@ -32,8 +43,10 @@ export class OrdersService {
     private readonly wxPayService: WxPayService,
   ) {}
 
-  async create(dto: CreateOrderDto): Promise<Order> {
-    const product = await this.productRepo.findOne({ where: { id: dto.productId } });
+  async createForBuyer(dto: CreateOrderDto, openid: string): Promise<Order> {
+    const product = await this.productRepo.findOne({
+      where: { id: dto.productId },
+    });
     if (!product) {
       throw new NotFoundException('产品不存在');
     }
@@ -41,7 +54,9 @@ export class OrdersService {
       throw new BadRequestException('产品已下架');
     }
 
-    const seller = await this.sellerRepo.findOne({ where: { id: dto.sellerId } });
+    const seller = await this.sellerRepo.findOne({
+      where: { id: dto.sellerId },
+    });
     if (!seller) {
       throw new NotFoundException('销售方不存在');
     }
@@ -55,7 +70,10 @@ export class OrdersService {
 
     let orderNo = generateOrderNo();
     let attempts = 0;
-    while (attempts < 10 && (await this.orderRepo.findOne({ where: { orderNo } }))) {
+    while (
+      attempts < 10 &&
+      (await this.orderRepo.findOne({ where: { orderNo } }))
+    ) {
       orderNo = generateOrderNo();
       attempts++;
     }
@@ -64,7 +82,7 @@ export class OrdersService {
       orderNo,
       productId: dto.productId,
       sellerId: dto.sellerId,
-      openid: dto.openid,
+      openid,
       quantity,
       unitPrice,
       totalAmount,
@@ -74,8 +92,18 @@ export class OrdersService {
     return this.orderRepo.save(order);
   }
 
-  async findAll(query: QueryOrderDto): Promise<{ items: Order[]; total: number }> {
-    const { keyword, status, sellerId, startDate, endDate, page = 1, pageSize = 20 } = query;
+  async findAll(
+    query: QueryOrderDto,
+  ): Promise<{ items: Order[]; total: number }> {
+    const {
+      keyword,
+      status,
+      sellerId,
+      startDate,
+      endDate,
+      page = 1,
+      pageSize = 20,
+    } = query;
     const where: any = {};
     if (status) where.status = status;
     if (sellerId) where.sellerId = sellerId;
@@ -94,13 +122,37 @@ export class OrdersService {
     return { items, total };
   }
 
-  async findOne(id: string): Promise<{ order: Order; address: OrderAddress | null }> {
+  async findOne(
+    id: string,
+  ): Promise<{ order: Order; address: OrderAddress | null }> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
     const address = await this.addressRepo.findOne({ where: { orderId: id } });
     return { order, address };
+  }
+
+  async findMine(
+    openid: string,
+    query: QueryOrderDto,
+  ): Promise<{ items: Order[]; total: number }> {
+    const { status, page = 1, pageSize = 20 } = query;
+    const [items, total] = await this.orderRepo.findAndCount({
+      where: { openid, ...(status ? { status } : {}) },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total };
+  }
+
+  async findOneForBuyer(
+    id: string,
+    openid: string,
+  ): Promise<{ order: Order; address: OrderAddress | null }> {
+    await this.assertBuyerOwnsOrder(id, openid);
+    return this.findOne(id);
   }
 
   async updateAddress(id: string, dto: OrderAddressDto): Promise<OrderAddress> {
@@ -122,7 +174,10 @@ export class OrdersService {
 
     const saved = await this.addressRepo.save(address);
 
-    if (order.status === OrderStatus.PAID || order.status === OrderStatus.PENDING_PAYMENT) {
+    if (
+      order.status === OrderStatus.PAID ||
+      order.status === OrderStatus.PENDING_PAYMENT
+    ) {
       order.status = OrderStatus.ADDRESS_PENDING;
       await this.orderRepo.save(order);
     }
@@ -130,12 +185,23 @@ export class OrdersService {
     return saved;
   }
 
+  async updateAddressForBuyer(
+    id: string,
+    openid: string,
+    dto: OrderAddressDto,
+  ): Promise<OrderAddress> {
+    await this.assertBuyerOwnsOrder(id, openid);
+    return this.updateAddress(id, dto);
+  }
+
   async updateStatus(id: string, dto: UpdateOrderStatusDto): Promise<Order> {
     const { order } = await this.findOne(id);
     const newStatus = dto.status;
 
     if (!this.isValidTransition(order.status, newStatus)) {
-      throw new BadRequestException(`不能从 ${order.status} 切换到 ${newStatus}`);
+      throw new BadRequestException(
+        `不能从 ${order.status} 切换到 ${newStatus}`,
+      );
     }
 
     if (newStatus === OrderStatus.PAID) {
@@ -147,10 +213,7 @@ export class OrdersService {
     return this.orderRepo.save(order);
   }
 
-  /**
-   * mock 模式（WX_PAY_ENABLED 未开启或密钥不全）：直接置为已支付，返回订单；
-   * 真实模式：调微信 JSAPI 下单，返回 wx.requestPayment 支付参数（不置 paid，等回调/对账）。
-   */
+  /** 真实模式等待回调/对账；mock 仅允许在 development/test 显式启用。 */
   async payOrder(id: string): Promise<Order | WxJsapiPaymentParams> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) {
@@ -164,6 +227,10 @@ export class OrdersService {
       return this.wxPayService.createJsapiOrder(order, '高三学业生涯导航日历');
     }
 
+    if (!isWxPayMockEnabled()) {
+      throw new ServiceUnavailableException('微信支付暂不可用，请稍后重试');
+    }
+
     const rawBody = JSON.stringify({
       type: 'mock_payment',
       orderId: order.id,
@@ -173,14 +240,27 @@ export class OrdersService {
     return this.markPaid(order, `MOCK-${order.orderNo}-${Date.now()}`, rawBody);
   }
 
+  async payOrderForBuyer(
+    id: string,
+    openid: string,
+  ): Promise<Order | WxJsapiPaymentParams> {
+    await this.assertBuyerOwnsOrder(id, openid);
+    return this.payOrder(id);
+  }
+
   /** 主动对账：微信侧已支付则按回调同样逻辑落库（幂等） */
   async syncPayment(id: string): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
-    if (order.status !== OrderStatus.PENDING_PAYMENT || !isWxPayEnabled()) {
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
       return order;
+    }
+
+    if (!isWxPayEnabled()) {
+      if (isWxPayMockEnabled()) return order;
+      throw new ServiceUnavailableException('微信支付暂不可用，请稍后重试');
     }
 
     const result = await this.wxPayService.queryByOutTradeNo(order.orderNo);
@@ -197,9 +277,19 @@ export class OrdersService {
     return order;
   }
 
+  async syncPaymentForBuyer(id: string, openid: string): Promise<Order> {
+    await this.assertBuyerOwnsOrder(id, openid);
+    return this.syncPayment(id);
+  }
+
   /** 支付回调落库：幂等 + 金额校验，金额不一致记录事件后抛错让微信重试 */
-  async handleWxNotify(plaintext: WxNotifyPlaintext, rawBody: string): Promise<void> {
-    const order = await this.orderRepo.findOne({ where: { orderNo: plaintext.out_trade_no } });
+  async handleWxNotify(
+    plaintext: WxNotifyPlaintext,
+    rawBody: string,
+  ): Promise<void> {
+    const order = await this.orderRepo.findOne({
+      where: { orderNo: plaintext.out_trade_no },
+    });
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
@@ -209,7 +299,9 @@ export class OrdersService {
     if (plaintext.trade_state !== 'SUCCESS') {
       return; // 非成功状态不落库
     }
-    if (!WxPayService.isAmountMatched(plaintext.amount?.total, order.totalAmount)) {
+    if (
+      !WxPayService.isAmountMatched(plaintext.amount?.total, order.totalAmount)
+    ) {
       await this.paymentEventRepo.save(
         this.paymentEventRepo.create({
           orderNo: order.orderNo,
@@ -225,7 +317,11 @@ export class OrdersService {
   }
 
   /** 置为已支付并写入支付事件（mock 支付 / 回调 / 对账共用） */
-  private async markPaid(order: Order, transactionId: string, rawBody: string): Promise<Order> {
+  private async markPaid(
+    order: Order,
+    transactionId: string,
+    rawBody: string,
+  ): Promise<Order> {
     order.status = OrderStatus.PAID;
     order.paidAt = new Date();
     order.wxTransactionId = transactionId;
@@ -255,14 +351,34 @@ export class OrdersService {
     return Between(start, end);
   }
 
+  private async assertBuyerOwnsOrder(
+    id: string,
+    openid: string,
+  ): Promise<void> {
+    const order = await this.orderRepo.findOne({ where: { id, openid } });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+  }
+
   private isValidTransition(current: OrderStatus, next: OrderStatus): boolean {
     const transitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.PENDING_PAYMENT]: [OrderStatus.PAID, OrderStatus.CLOSED, OrderStatus.CANCELLED],
+      [OrderStatus.PENDING_PAYMENT]: [
+        OrderStatus.PAID,
+        OrderStatus.CLOSED,
+        OrderStatus.CANCELLED,
+      ],
       [OrderStatus.PAID]: [OrderStatus.ADDRESS_PENDING, OrderStatus.REFUNDED],
       [OrderStatus.ADDRESS_PENDING]: [OrderStatus.SHIPPING_PENDING],
-      [OrderStatus.SHIPPING_PENDING]: [OrderStatus.SHIPPED, OrderStatus.AFTERSALE_WAITING],
+      [OrderStatus.SHIPPING_PENDING]: [
+        OrderStatus.SHIPPED,
+        OrderStatus.AFTERSALE_WAITING,
+      ],
       [OrderStatus.SHIPPED]: [OrderStatus.AFTERSALE_WAITING],
-      [OrderStatus.AFTERSALE_WAITING]: [OrderStatus.SETTLEMENT_READY, OrderStatus.REFUNDED],
+      [OrderStatus.AFTERSALE_WAITING]: [
+        OrderStatus.SETTLEMENT_READY,
+        OrderStatus.REFUNDED,
+      ],
       [OrderStatus.SETTLEMENT_READY]: [OrderStatus.REFUNDED],
       [OrderStatus.CLOSED]: [],
       [OrderStatus.REFUNDED]: [],

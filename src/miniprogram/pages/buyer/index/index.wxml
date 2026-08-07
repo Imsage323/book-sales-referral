@@ -5,6 +5,10 @@
     <image class="hero" src="/images/product-hero.jpg" mode="widthFix" />
 
     <view class="card head-card">
+      <view class="source-line">
+        <text class="source-badge">{{isDirect ? '企业直营' : '销售专属'}}</text>
+        <text class="source-name">由 {{seller.name}} 提供服务</text>
+      </view>
       <view class="price-line">
         <text class="price-symbol">¥</text>
         <text class="price-value">{{product.price / 100}}</text>
@@ -34,6 +38,12 @@
       <view class="img-caption">外观：精装厚册，陪伴高三一整年</view>
     </view>
 
+    <view class="service-note">
+      下单前请阅读
+      <text class="privacy-link" bindtap="openPrivacyContract">《{{privacyContractName}}》</text>
+      ，我们仅将账号标识和收货信息用于订单履约与售后。
+    </view>
+
     <view class="bottom-spacer"></view>
 
     <view class="buy-bar">
@@ -50,5 +60,30 @@
     </view>
   </block>
 
+  <view wx:elif="{{loadError}}" class="state-panel">
+    <view class="state-title">暂时无法购买</view>
+    <view class="state-message">{{loadError}}</view>
+    <button class="retry-btn" bindtap="retryLoad">重新加载</button>
+  </view>
+
   <view wx:else class="state-tip">未找到产品信息</view>
+
+  <view wx:if="{{showPrivacyPrompt}}" class="privacy-mask" catchtouchmove="noop">
+    <view class="privacy-sheet">
+      <view class="privacy-kicker">购买前说明</view>
+      <view class="privacy-title">请确认个人信息使用规则</view>
+      <view class="privacy-copy">
+        为完成登录、订单归属、收货和售后，我们会处理账号标识、联系人姓名、手机号及收货地址；读取剪贴板仅在你主动点击时发生。
+      </view>
+      <text class="privacy-contract" bindtap="openPrivacyContract">查看《{{privacyContractName}}》</text>
+      <view class="privacy-actions">
+        <button class="privacy-later" bindtap="onDeclinePrivacy">暂不使用</button>
+        <button
+          class="privacy-agree"
+          open-type="agreePrivacyAuthorization"
+          bindagreeprivacyauthorization="onAgreePrivacyAuthorization"
+        >同意并继续</button>
+      </view>
+    </view>
+  </view>
 </view>

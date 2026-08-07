@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { createBuyerOrder, loginBuyer } from './buyer-test.helper';
 
 jest.setTimeout(30000);
 
@@ -10,6 +11,7 @@ describe('LedgerController (e2e)', () => {
   let token: string;
   let sellerId: string;
   let productId: string;
+  let buyerToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -36,6 +38,7 @@ describe('LedgerController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Ledger Test Product', price: 100 });
     productId = productRes.body.id;
+    buyerToken = await loginBuyer(app, 'ledger-buyer');
   });
 
   afterAll(async () => {
@@ -43,9 +46,11 @@ describe('LedgerController (e2e)', () => {
   });
 
   it('should export order ledger as xlsx', async () => {
-    const orderRes = await request(app.getHttpServer())
-      .post('/api/orders')
-      .send({ productId, sellerId, openid: 'test-openid', quantity: 2 });
+    const orderRes = await createBuyerOrder(app, buyerToken, {
+      productId,
+      sellerId,
+      quantity: 2,
+    });
     const orderId = orderRes.body.id;
 
     await request(app.getHttpServer())
@@ -69,7 +74,9 @@ describe('LedgerController (e2e)', () => {
     expect(res.headers['content-type']).toBe(
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
-    expect(res.headers['content-disposition']).toMatch(/attachment; filename="ledger-.*\.xlsx"/);
+    expect(res.headers['content-disposition']).toMatch(
+      /attachment; filename="ledger-.*\.xlsx"/,
+    );
     expect(Buffer.isBuffer(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThan(0);
   });

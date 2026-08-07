@@ -6,6 +6,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { AdminUsersModule } from '../admin-users/admin-users.module';
+import { BuyerJwtStrategy } from './buyer-jwt.strategy';
+import { BuyerJwtAuthGuard } from './buyer-jwt-auth.guard';
+import { BuyerTokenService } from './buyer-token.service';
 
 @Module({
   imports: [
@@ -23,7 +26,14 @@ import { AdminUsersModule } from '../admin-users/admin-users.module';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    BuyerJwtStrategy,
+    BuyerJwtAuthGuard,
+    BuyerTokenService,
+  ],
   controllers: [AuthController],
+  exports: [JwtModule, BuyerJwtAuthGuard, BuyerTokenService],
 })
 export class AuthModule {}

@@ -5,29 +5,37 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as https from 'https';
-import { getWxConfig } from '../config/wx.config';
+import {
+  getWxConfig,
+  isWxLoginEnabled,
+  isWxLoginMockEnabled,
+} from '../config/wx.config';
 
 @Injectable()
 export class WxLoginService {
   private readonly logger = new Logger(WxLoginService.name);
+  private readonly httpsRequest = https.request;
 
   /** 部署探针用：确认当前实例是否包含登录加固版本（不泄露密钥） */
   getDiag() {
-    const { appid, secret } = getWxConfig();
+    const { appid, secret, loginMode } = getWxConfig();
     return {
-      version: 'wx-login-v3',
+      version: 'wx-login-v4',
+      loginMode,
       hasAppid: Boolean(appid),
       hasSecret: Boolean(secret),
-      appidTail: appid ? appid.slice(-6) : '',
     };
   }
 
-  /** wx.login 的 code 换 openid；未配置 AppID/Secret 时返回占位 openid 保持本地开发可用 */
+  /** wx.login 的 code 换 openid；mock 仅允许在 development/test 显式启用。 */
   async code2session(code: string): Promise<{ openid: string }> {
     try {
       const { appid, secret } = getWxConfig();
-      if (!appid || !secret) {
+      if (isWxLoginMockEnabled()) {
         return { openid: `dev-openid-${code}` };
+      }
+      if (!isWxLoginEnabled()) {
+        throw new ServiceUnavailableException('微信登录暂不可用，请稍后重试');
       }
 
       const path =
@@ -65,25 +73,19 @@ export class WxLoginService {
       }
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`jscode2session 未预期异常: ${message}`);
-      throw new ServiceUnavailableException(
-        `无法访问微信登录接口: ${message}`,
-      );
+      throw new ServiceUnavailableException(`无法访问微信登录接口: ${message}`);
     }
   }
 
   private getJson(host: string, path: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const req = https.request(
+      const req = this.httpsRequest(
         {
           host,
           path,
           method: 'GET',
           timeout: 10000,
           headers: { Accept: 'application/json' },
-          // 微信云托管开启「开放接口服务」时，对 api.weixin.qq.com 走 VPC 代理，
-          // 证书为代理自签，Node 默认校验会报 self-signed certificate。
-          // 仅针对微信域名关闭校验；公网直连官方证书时同样可工作。
-          rejectUnauthorized: false,
         },
         (res) => {
           const chunks: Buffer[] = [];

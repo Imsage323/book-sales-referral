@@ -52,4 +52,27 @@ describe('RewardRecordsController (e2e)', () => {
       expect(detailRes.body.processedAt).toBeTruthy();
     }
   });
+
+  it('should return a seller reward summary', async () => {
+    const sellersRes = await request(app.getHttpServer())
+      .get('/api/sellers?pageSize=1')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    if (sellersRes.body.items.length === 0) return;
+
+    const sellerId = sellersRes.body.items[0].id;
+    const summaryRes = await request(app.getHttpServer())
+      .get(`/api/rewards/records/summary?sellerId=${sellerId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(summaryRes.body).toMatchObject({
+      sellerId,
+      totalAmount: expect.any(Number),
+      count: expect.any(Number),
+      byStatus: expect.any(Object),
+      byType: expect.any(Object),
+    });
+  });
 });

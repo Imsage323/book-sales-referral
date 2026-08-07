@@ -17,11 +17,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; username: string }) {
+  async validate(payload: {
+    sub: string;
+    username: string;
+    tokenType: 'admin';
+  }) {
+    if (payload.tokenType !== 'admin' || !payload.username) {
+      throw new UnauthorizedException();
+    }
     const user = await this.adminUsersService.findByUsername(payload.username);
     if (!user || user.status !== 'active') {
       throw new UnauthorizedException();
     }
-    return { userId: user.id, username: user.username, role: user.role };
+    return {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      tokenType: payload.tokenType,
+    };
   }
 }

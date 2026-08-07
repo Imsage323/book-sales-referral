@@ -32,6 +32,11 @@ export class ProductsController {
     return this.productsService.findAll(query);
   }
 
+  @Get('storefront')
+  findStorefront() {
+    return this.productsService.findStorefront();
+  }
+
   @Get('public/:id')
   findPublic(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findPublic(id);

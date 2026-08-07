@@ -1,4 +1,5 @@
 import { get } from '../../../utils/api';
+import { openPrivacyContract } from '../../../utils/privacy';
 
 interface OrderInfo {
   id: string;
@@ -10,7 +11,14 @@ interface OrderInfo {
 
 interface OrderDetail {
   order: OrderInfo;
-  address?: any;
+  address?: {
+    recipient: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    address: string;
+  };
 }
 
 const LATER_STATUSES = [
@@ -21,13 +29,40 @@ const LATER_STATUSES = [
   'settlement_ready',
 ];
 
+const STATUS_TEXT: Record<string, string> = {
+  paid: '已支付',
+  address_pending: '地址已提交',
+  shipping_pending: '等待发货',
+  shipped: '已发货',
+  aftersale_waiting: '售后观察期',
+  settlement_ready: '订单已完成',
+  refunded: '已退款',
+  cancelled: '已取消',
+};
+
+function getShippingText(status: string): string {
+  if (status === 'shipping_pending' || status === 'address_pending') {
+    return '商家正在核对收货信息并安排发货。';
+  }
+  if (['shipped', 'aftersale_waiting', 'settlement_ready'].includes(status)) {
+    return '订单已经发货，如需物流单号可联系微信客服。';
+  }
+  if (status === 'refunded' || status === 'cancelled') {
+    return '当前订单无需继续发货。';
+  }
+  return '提交收货地址后，我们会尽快安排发货。';
+}
+
 Page({
   data: {
     orderId: '',
     groupQrcode: '',
     order: null as OrderInfo | null,
+    address: null as OrderDetail['address'] | null,
     loading: false,
     showGroupButton: false,
+    statusText: '',
+    shippingText: '',
   },
 
   onLoad(options: Record<string, string | undefined>) {
@@ -44,10 +79,16 @@ Page({
   async loadOrder(orderId: string) {
     this.setData({ loading: true });
     try {
-      const detail = await get<OrderDetail>(`/orders/${orderId}`);
+      const detail = await get<OrderDetail>(`/buyer/orders/${orderId}`);
       const order = detail.order;
       const showGroupButton = LATER_STATUSES.includes(order.status);
-      this.setData({ order, showGroupButton });
+      this.setData({
+        order,
+        address: detail.address || null,
+        showGroupButton,
+        statusText: STATUS_TEXT[order.status] || order.status,
+        shippingText: getShippingText(order.status),
+      });
     } catch (err) {
       console.error('load order failed', err);
     } finally {
@@ -64,5 +105,9 @@ Page({
     wx.navigateTo({
       url: `/pages/buyer/group/group?groupQrcode=${encodeURIComponent(groupQrcode)}`,
     });
+  },
+
+  openPrivacyContract() {
+    openPrivacyContract();
   },
 });

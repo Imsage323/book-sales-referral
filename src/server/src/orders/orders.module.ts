@@ -8,13 +8,22 @@ import { Product } from '../products/entities/product.entity';
 import { Seller } from '../sellers/entities/seller.entity';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
 import { PaymentsModule } from '../payments/payments.module';
+import { BuyerOrdersController } from './buyer-orders.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderAddress, Product, Seller, PaymentEvent]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderAddress,
+      Product,
+      Seller,
+      PaymentEvent,
+    ]),
+    AuthModule,
     forwardRef(() => PaymentsModule),
   ],
-  controllers: [OrdersController],
+  controllers: [OrdersController, BuyerOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],
 })

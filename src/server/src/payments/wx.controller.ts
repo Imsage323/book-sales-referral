@@ -16,6 +16,7 @@ import { Request } from 'express';
 import { WxLoginService } from './wx-login.service';
 import { WxPayService } from './wx-pay.service';
 import { OrdersService } from '../orders/orders.service';
+import { BuyerTokenService } from '../auth/buyer-token.service';
 
 @Controller('wx')
 export class WxController {
@@ -25,6 +26,7 @@ export class WxController {
     private readonly wxLoginService: WxLoginService,
     private readonly wxPayService: WxPayService,
     private readonly ordersService: OrdersService,
+    private readonly buyerTokenService: BuyerTokenService,
   ) {}
 
   /** 部署探针：确认登录加固版本是否在线（不泄露密钥） */
@@ -41,7 +43,8 @@ export class WxController {
       throw new BadRequestException('缺少 code');
     }
     try {
-      return await this.wxLoginService.code2session(code);
+      const { openid } = await this.wxLoginService.code2session(code);
+      return this.buyerTokenService.issue(openid);
     } catch (err) {
       if (err instanceof HttpException) {
         throw err;
@@ -69,11 +72,20 @@ export class WxController {
       await this.ordersService.handleWxNotify(plaintext, rawBody);
       return { code: 'SUCCESS', message: '成功' };
     } catch (err) {
-      if (err instanceof UnauthorizedException || err instanceof BadRequestException) {
-        throw new HttpException({ code: 'FAIL', message: err.message }, err.getStatus());
+      if (
+        err instanceof UnauthorizedException ||
+        err instanceof BadRequestException
+      ) {
+        throw new HttpException(
+          { code: 'FAIL', message: err.message },
+          err.getStatus(),
+        );
       }
       this.logger.error(`支付回调处理失败: ${err}`);
-      throw new InternalServerErrorException({ code: 'FAIL', message: '处理失败' });
+      throw new InternalServerErrorException({
+        code: 'FAIL',
+        message: '处理失败',
+      });
     }
   }
 }

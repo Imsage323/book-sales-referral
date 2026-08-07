@@ -3,10 +3,10 @@
     "pages/buyer/index/index",
     "pages/buyer/pay/pay",
     "pages/buyer/address/address",
-    "pages/buyer/group/group",
-    "pages/seller/login/login",
-    "pages/seller/index/index"
+    "pages/buyer/result/result",
+    "pages/buyer/group/group"
   ],
+  "__usePrivacyCheck__": true,
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#fff",

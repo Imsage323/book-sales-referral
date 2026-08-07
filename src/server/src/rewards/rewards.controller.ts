@@ -60,6 +60,13 @@ export class RewardsController {
     return this.rewardsService.findAllRecords(query);
   }
 
+  @Get('records/summary')
+  getRecordsSummary(
+    @Query('sellerId', ParseUUIDPipe) sellerId: string,
+  ) {
+    return this.rewardsService.getRecordsSummary(sellerId);
+  }
+
   @Get('records/:id')
   findOneRecord(@Param('id', ParseUUIDPipe) id: string) {
     return this.rewardsService.findOneRecord(id);

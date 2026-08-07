@@ -22,6 +22,27 @@ page {
   position: relative;
 }
 
+.source-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.source-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #2f5d50;
+  color: #fffaf3;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.source-name {
+  color: #766b61;
+  font-size: 12px;
+}
+
 .price-line {
   display: flex;
   align-items: baseline;
@@ -144,6 +165,20 @@ page {
   height: 84px;
 }
 
+.service-note {
+  margin: 18px 24px 0;
+  color: #83776d;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.privacy-link,
+.privacy-contract {
+  color: #a94f18;
+  text-decoration: underline;
+}
+
 .buy-bar {
   position: fixed;
   left: 0;
@@ -199,4 +234,110 @@ page {
   text-align: center;
   color: #8a8a8a;
   padding: 60px 0;
+}
+
+.state-panel {
+  margin: 64px 24px;
+  padding: 28px 24px;
+  border: 1px solid #ead9ca;
+  border-radius: 16px;
+  background: #fffdf9;
+  text-align: center;
+}
+
+.state-title {
+  color: #3e332b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.state-message {
+  margin-top: 10px;
+  color: #7c7067;
+  line-height: 1.7;
+}
+
+.retry-btn {
+  width: 144px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: #f07c24;
+  color: #fff;
+  font-size: 14px;
+}
+
+.retry-btn::after,
+.privacy-later::after,
+.privacy-agree::after {
+  border: 0;
+}
+
+.privacy-mask {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(38, 29, 23, 0.48);
+}
+
+.privacy-sheet {
+  width: 100%;
+  padding: 28px 24px calc(24px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  border-radius: 24px 24px 0 0;
+  background: #fffaf3;
+  box-shadow: 0 -16px 50px rgba(60, 39, 24, 0.18);
+}
+
+.privacy-kicker {
+  color: #a94f18;
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+
+.privacy-title {
+  margin-top: 8px;
+  color: #312821;
+  font-family: "STSong", "SimSun", serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.privacy-copy {
+  margin-top: 14px;
+  color: #665a50;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.privacy-contract {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.privacy-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.privacy-later,
+.privacy-agree {
+  flex: 1;
+  height: 46px;
+  line-height: 46px;
+  border-radius: 999px;
+  font-size: 15px;
+}
+
+.privacy-later {
+  background: #eee4da;
+  color: #665a50;
+}
+
+.privacy-agree {
+  background: #2f5d50;
+  color: #fff;
 }

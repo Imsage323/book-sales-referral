@@ -21,6 +21,19 @@ export interface RewardCalculationResult {
   referralReward?: RewardRecord;
 }
 
+interface RewardSummaryGroup {
+  count: number;
+  totalAmount: number;
+}
+
+export interface RewardRecordsSummary {
+  sellerId: string;
+  totalAmount: number;
+  count: number;
+  byStatus: Partial<Record<RewardStatus, RewardSummaryGroup>>;
+  byType: Partial<Record<RewardType, RewardSummaryGroup>>;
+}
+
 @Injectable()
 export class RewardsService {
   constructor(
@@ -203,6 +216,44 @@ export class RewardsService {
     return { items, total };
   }
 
+  async getRecordsSummary(sellerId: string): Promise<RewardRecordsSummary> {
+    const rows = await this.recordRepo
+      .createQueryBuilder('record')
+      .select('record.status', 'status')
+      .addSelect('record.rewardType', 'rewardType')
+      .addSelect('COUNT(record.id)', 'count')
+      .addSelect('COALESCE(SUM(record.amount), 0)', 'totalAmount')
+      .where('record.sellerId = :sellerId', { sellerId })
+      .groupBy('record.status')
+      .addGroupBy('record.rewardType')
+      .getRawMany<{
+        status: RewardStatus;
+        rewardType: RewardType;
+        count: string | number;
+        totalAmount: string | number;
+      }>();
+
+    const summary: RewardRecordsSummary = {
+      sellerId,
+      totalAmount: 0,
+      count: 0,
+      byStatus: {},
+      byType: {},
+    };
+
+    for (const row of rows) {
+      const count = Number(row.count) || 0;
+      const totalAmount = Number(row.totalAmount) || 0;
+
+      summary.count += count;
+      summary.totalAmount += totalAmount;
+      this.addSummaryGroup(summary.byStatus, row.status, count, totalAmount);
+      this.addSummaryGroup(summary.byType, row.rewardType, count, totalAmount);
+    }
+
+    return summary;
+  }
+
   async findOneRecord(id: string): Promise<RewardRecord> {
     const record = await this.recordRepo.findOne({ where: { id } });
     if (!record) {
@@ -260,5 +311,18 @@ export class RewardsService {
       default:
         return '默认规则';
     }
+  }
+
+  private addSummaryGroup<T extends string>(
+    groups: Partial<Record<T, RewardSummaryGroup>>,
+    key: T,
+    count: number,
+    totalAmount: number,
+  ): void {
+    const current = groups[key] || { count: 0, totalAmount: 0 };
+    groups[key] = {
+      count: current.count + count,
+      totalAmount: current.totalAmount + totalAmount,
+    };
   }
 }

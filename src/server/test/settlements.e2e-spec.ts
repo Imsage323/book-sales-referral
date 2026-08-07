@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { createBuyerOrder, loginBuyer } from './buyer-test.helper';
 
 jest.setTimeout(30000);
 
@@ -11,8 +12,12 @@ describe('SettlementController (e2e)', () => {
   let sellerId: string;
   let parentSellerId: string;
   let productId: string;
+  let buyerToken: string;
 
   beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.WX_PAY_MODE = 'mock';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -43,6 +48,7 @@ describe('SettlementController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Settlement Test Product', price: 100, aftersaleDays: 0 });
     productId = productRes.body.id;
+    buyerToken = await loginBuyer(app, 'settlements-buyer');
   });
 
   afterAll(async () => {
@@ -50,18 +56,22 @@ describe('SettlementController (e2e)', () => {
   });
 
   it('should settle an order after aftersale period and create reward records', async () => {
-    const orderRes = await request(app.getHttpServer())
-      .post('/api/orders')
-      .send({ productId, sellerId, openid: 'test-openid', quantity: 2 });
+    const orderRes = await createBuyerOrder(app, buyerToken, {
+      productId,
+      sellerId,
+      quantity: 2,
+    });
     const orderId = orderRes.body.id;
 
     await request(app.getHttpServer())
-      .post(`/api/orders/${orderId}/pay`)
+      .post(`/api/buyer/orders/${orderId}/pay`)
+      .set('Authorization', `Bearer ${buyerToken}`)
       .send({})
       .expect(201);
 
     await request(app.getHttpServer())
-      .patch(`/api/orders/${orderId}/address`)
+      .patch(`/api/buyer/orders/${orderId}/address`)
+      .set('Authorization', `Bearer ${buyerToken}`)
       .send({
         recipient: '张三',
         phone: '13800138000',
@@ -87,6 +97,7 @@ describe('SettlementController (e2e)', () => {
 
     const orderDetail = await request(app.getHttpServer())
       .get(`/api/orders/${orderId}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(orderDetail.body.order.status).toBe('settlement_ready');
 

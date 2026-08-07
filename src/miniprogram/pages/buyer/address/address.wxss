@@ -1,3 +1,205 @@
 .container {
-  padding: 20px;
+  min-height: 100vh;
+  padding: 24rpx 32rpx 64rpx;
+  box-sizing: border-box;
+  background: #fffaf3;
+}
+
+.purpose-card {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  border: 1rpx solid #ead9ca;
+  border-radius: 20rpx;
+  background: #fffdf9;
+}
+
+.purpose-mark {
+  flex: none;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #2f5d50;
+  color: #ffffff;
+  font-family: "STSong", "SimSun", serif;
+  font-size: 30rpx;
+  line-height: 64rpx;
+  text-align: center;
+}
+
+.purpose-title {
+  color: #332a23;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.purpose-copy {
+  margin-top: 8rpx;
+  color: #776a60;
+  font-size: 23rpx;
+  line-height: 1.7;
+}
+
+.purpose-link {
+  display: inline-block;
+  margin-top: 8rpx;
+  color: #a94f18;
+  font-size: 23rpx;
+  text-decoration: underline;
+}
+
+.paste-card {
+  background: #f7f8fa;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
+}
+
+.paste-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #222222;
+  margin-bottom: 8rpx;
+}
+
+.paste-hint {
+  font-size: 24rpx;
+  color: #888888;
+  line-height: 1.5;
+  margin-bottom: 16rpx;
+}
+
+.paste-area {
+  width: 100%;
+  height: 160rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.paste-actions {
+  margin-top: 16rpx;
+  text-align: right;
+}
+
+.btn-clip,
+.btn-parse {
+  display: inline-block;
+  margin-left: 16rpx;
+  font-size: 26rpx;
+  line-height: 2;
+  padding: 0 24rpx;
+}
+
+.btn-clip {
+  background: #ffffff;
+  color: #333333;
+  border: 1rpx solid #dddddd;
+}
+
+.btn-parse {
+  background: #07c160;
+  color: #ffffff;
+}
+
+.field {
+  margin-bottom: 24rpx;
+}
+
+.label {
+  display: block;
+  font-size: 26rpx;
+  color: #666666;
+  margin-bottom: 8rpx;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.btn-submit {
+  margin-top: 16rpx;
+  border-radius: 999rpx;
+  background: #2f5d50;
+}
+
+.contact-btn {
+  margin-top: 20rpx;
+  background: transparent;
+  color: #7b6e64;
+  font-size: 25rpx;
+}
+
+.contact-btn::after,
+.privacy-later::after,
+.privacy-agree::after {
+  border: 0;
+}
+
+.privacy-mask {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(38, 29, 23, 0.48);
+}
+
+.privacy-sheet {
+  width: 100%;
+  padding: 56rpx 48rpx calc(48rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  border-radius: 48rpx 48rpx 0 0;
+  background: #fffaf3;
+}
+
+.privacy-title {
+  color: #312821;
+  font-family: "STSong", "SimSun", serif;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.privacy-copy {
+  margin-top: 24rpx;
+  color: #665a50;
+  font-size: 26rpx;
+  line-height: 1.8;
+}
+
+.privacy-actions {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 44rpx;
+}
+
+.privacy-later,
+.privacy-agree {
+  flex: 1;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+}
+
+.privacy-later {
+  background: #eee4da;
+  color: #665a50;
+}
+
+.privacy-agree {
+  background: #2f5d50;
+  color: #ffffff;
 }

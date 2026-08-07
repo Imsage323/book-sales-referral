@@ -4,7 +4,7 @@ import { Aes, Rsa } from 'wechatpay-axios-plugin';
 import { WxPayService } from './wx-pay.service';
 
 const WX_ENV_KEYS = [
-  'WX_PAY_ENABLED',
+  'WX_PAY_MODE',
   'WX_APPID',
   'WX_MCHID',
   'WX_PAY_SERIAL_NO',
@@ -17,16 +17,22 @@ const WX_ENV_KEYS = [
 
 describe('WxPayService', () => {
   const service = new WxPayService();
-  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-  const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-  const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+  });
+  const privatePem = privateKey
+    .export({ type: 'pkcs8', format: 'pem' })
+    .toString();
+  const publicPem = publicKey
+    .export({ type: 'spki', format: 'pem' })
+    .toString();
   const apiV3Key = 'a'.repeat(32);
   const publicKeyId = 'PUB_KEY_ID_TEST';
   let envBackup: Record<string, string | undefined>;
 
   beforeEach(() => {
     envBackup = Object.fromEntries(WX_ENV_KEYS.map((k) => [k, process.env[k]]));
-    process.env.WX_PAY_ENABLED = 'true';
+    process.env.WX_PAY_MODE = 'real';
     process.env.WX_APPID = 'wx-appid';
     process.env.WX_MCHID = 'mchid';
     process.env.WX_PAY_SERIAL_NO = 'serial-no';
@@ -84,7 +90,10 @@ describe('WxPayService', () => {
       });
       const timestamp = '1720000000';
       const headerNonce = 'header-nonce';
-      const signature = Rsa.sign(`${timestamp}\n${headerNonce}\n${rawBody}\n`, privatePem);
+      const signature = Rsa.sign(
+        `${timestamp}\n${headerNonce}\n${rawBody}\n`,
+        privatePem,
+      );
       const headers = {
         'wechatpay-timestamp': timestamp,
         'wechatpay-nonce': headerNonce,
@@ -112,7 +121,10 @@ describe('WxPayService', () => {
       const { headers, rawBody } = buildSignedNotify({ out_trade_no: 'O-1' });
 
       expect(() =>
-        service.verifyAndDecryptNotify(headers, rawBody.replace('event-id', 'evil-id')),
+        service.verifyAndDecryptNotify(
+          headers,
+          rawBody.replace('event-id', 'evil-id'),
+        ),
       ).toThrow(UnauthorizedException);
     });
 
@@ -128,7 +140,9 @@ describe('WxPayService', () => {
     });
 
     it('should reject missing signature headers with 401', () => {
-      expect(() => service.verifyAndDecryptNotify({}, '{}')).toThrow(UnauthorizedException);
+      expect(() => service.verifyAndDecryptNotify({}, '{}')).toThrow(
+        UnauthorizedException,
+      );
     });
   });
 

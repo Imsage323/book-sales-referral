@@ -18,11 +18,17 @@ export class OperationLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async () => {
         try {
+          const isAdmin = user?.tokenType === 'admin';
+          const detail = buildOperationLogDetail(
+            request.path,
+            user?.tokenType,
+            request.body,
+          );
           await this.operationLogsService.log(
-            user?.userId,
+            isAdmin ? user.userId : undefined,
             `${request.method} ${request.path}`,
             request.params?.id || '-',
-            { body: request.body },
+            detail,
           );
         } catch {
           // Operation logging is best-effort; do not fail the request.
@@ -30,4 +36,45 @@ export class OperationLogInterceptor implements NestInterceptor {
       }),
     );
   }
+}
+
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'passwordHash',
+  'token',
+  'accessToken',
+  'authorization',
+  'code',
+  'openid',
+  'session_key',
+  'sessionKey',
+  'phone',
+  'recipient',
+  'name',
+  'address',
+  'addressDetail',
+  'rawBody',
+  'paySign',
+]);
+
+export function sanitizeForLog(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeForLog);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      SENSITIVE_KEYS.has(key) ? '[REDACTED]' : sanitizeForLog(entry),
+    ]),
+  );
+}
+
+export function buildOperationLogDetail(
+  path: string,
+  tokenType: string | undefined,
+  body: unknown,
+): Record<string, unknown> {
+  if (tokenType !== 'admin' || path.endsWith('/auth/login')) {
+    return { result: 'success' };
+  }
+  return { body: sanitizeForLog(body) };
 }

@@ -1,3 +1,189 @@
 .container {
-  padding: 20px;
+  min-height: 100vh;
+  padding: 48rpx 32rpx calc(64rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: #fff8ef;
+  color: #332a23;
+}
+
+.result-wrap {
+  text-align: center;
+}
+
+.success-seal {
+  width: 104rpx;
+  height: 104rpx;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #2f5d50;
+  color: #ffffff;
+  font-size: 56rpx;
+  line-height: 104rpx;
+  box-shadow: 0 18rpx 40rpx rgba(47, 93, 80, 0.2);
+}
+
+.result-title {
+  margin-top: 28rpx;
+  font-family: "STSong", "SimSun", serif;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.result-subtitle {
+  max-width: 560rpx;
+  margin: 14rpx auto 36rpx;
+  color: #776a60;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
+.paper-card {
+  margin-top: 24rpx;
+  padding: 30rpx;
+  border: 1rpx solid #ead9ca;
+  border-radius: 22rpx;
+  background: #fffdf9;
+  box-shadow: 0 8rpx 28rpx rgba(83, 58, 40, 0.06);
+  text-align: left;
+}
+
+.card-label {
+  margin-bottom: 20rpx;
+  color: #a94f18;
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx dashed #eadfd5;
+}
+
+.info-row:last-child {
+  border-bottom: 0;
+}
+
+.info-key {
+  flex: none;
+  color: #8a7e74;
+  font-size: 25rpx;
+}
+
+.info-value {
+  color: #332a23;
+  font-size: 26rpx;
+  text-align: right;
+}
+
+.order-no {
+  word-break: break-all;
+}
+
+.status-chip {
+  padding: 3rpx 14rpx;
+  border-radius: 999rpx;
+  background: #e3eee9;
+  color: #2f5d50;
+  font-size: 23rpx;
+}
+
+.address-name {
+  font-size: 29rpx;
+  font-weight: 600;
+}
+
+.address-line {
+  margin-top: 12rpx;
+  color: #6f6359;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
+.timeline-card {
+  display: flex;
+  gap: 22rpx;
+}
+
+.timeline-dot {
+  flex: none;
+  width: 18rpx;
+  height: 18rpx;
+  margin-top: 8rpx;
+  border: 6rpx solid #dce9e4;
+  border-radius: 50%;
+  background: #2f5d50;
+}
+
+.timeline-title {
+  font-size: 29rpx;
+  font-weight: 600;
+}
+
+.timeline-copy {
+  margin-top: 10rpx;
+  color: #74685f;
+  font-size: 24rpx;
+  line-height: 1.75;
+}
+
+.contact-btn {
+  margin-top: 32rpx;
+  border-radius: 999rpx;
+  background: #2f5d50;
+  color: #ffffff;
+  font-size: 29rpx;
+}
+
+.contact-btn::after,
+.group-btn::after {
+  border: 0;
+}
+
+.group-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 24rpx;
+  padding: 26rpx 28rpx;
+  border-radius: 20rpx;
+  background: #f1e7da;
+  text-align: left;
+}
+
+.group-title {
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.group-note {
+  margin-top: 6rpx;
+  color: #7a6e64;
+  font-size: 22rpx;
+}
+
+.group-btn {
+  flex: none;
+  margin: 0;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: #a94f18;
+  color: #ffffff;
+  font-size: 24rpx;
+}
+
+.privacy-foot {
+  margin-top: 32rpx;
+  color: #8b7e73;
+  font-size: 23rpx;
+  text-decoration: underline;
+}
+
+.state-tip {
+  padding-top: 160rpx;
+  color: #8b7e73;
+  text-align: center;
 }

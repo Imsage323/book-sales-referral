@@ -19,10 +19,15 @@ import { ShipmentsModule } from './shipments/shipments.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { RewardsModule } from './rewards/rewards.module';
 import { OperationLogInterceptor } from './operation-logs/operation-log.interceptor';
+import { validateProductionReadiness } from './config/production-readiness';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [databaseConfig] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [databaseConfig],
+      validate: validateProductionReadiness,
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

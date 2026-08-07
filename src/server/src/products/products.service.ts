@@ -1,16 +1,26 @@
-import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
+import { SellersService } from '../sellers/sellers.service';
+import { SellerStatus } from '../sellers/entities/seller.entity';
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
   constructor(
     @InjectRepository(Product)
     private readonly repo: Repository<Product>,
+    private readonly sellersService: SellersService,
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -22,7 +32,9 @@ export class ProductsService implements OnModuleInit {
     return this.repo.save(product);
   }
 
-  async findAll(query: QueryProductDto): Promise<{ items: Product[]; total: number }> {
+  async findAll(
+    query: QueryProductDto,
+  ): Promise<{ items: Product[]; total: number }> {
     const { keyword, isOnSale, page = 1, pageSize = 20 } = query;
     const where: any = {};
     if (isOnSale !== undefined) {
@@ -61,11 +73,69 @@ export class ProductsService implements OnModuleInit {
     await this.repo.delete(id);
   }
 
-  async findPublic(id: string): Promise<{ id: string; name: string; cover?: string; price: number; intro?: string; defaultQuantity: number; groupQrcode?: string; isOnSale: boolean }> {
+  async findPublic(
+    id: string,
+  ): Promise<{
+    id: string;
+    name: string;
+    cover?: string;
+    price: number;
+    intro?: string;
+    defaultQuantity: number;
+    groupQrcode?: string;
+    isOnSale: boolean;
+  }> {
     const product = await this.findOne(id);
     if (!product.isOnSale) {
       throw new NotFoundException('产品已下架');
     }
+    return {
+      id: product.id,
+      name: product.name,
+      cover: product.cover,
+      price: product.price,
+      intro: product.intro,
+      defaultQuantity: product.defaultQuantity,
+      groupQrcode: product.groupQrcode,
+      isOnSale: product.isOnSale,
+    };
+  }
+
+  async findStorefront() {
+    const sellerCode = this.configService
+      .get<string>('DEFAULT_SELLER_CODE')
+      ?.trim();
+    const productId = this.configService
+      .get<string>('DEFAULT_PRODUCT_ID')
+      ?.trim();
+    if (!sellerCode || !productId) {
+      throw new ServiceUnavailableException('普通购买入口尚未配置');
+    }
+
+    const seller = await this.sellersService.findByCode(sellerCode);
+    if (!seller || seller.status !== SellerStatus.ACTIVE) {
+      throw new ServiceUnavailableException('默认销售方不可用');
+    }
+
+    const product = await this.repo.findOne({ where: { id: productId } });
+    if (!product || !product.isOnSale) {
+      throw new ServiceUnavailableException('默认商品不可用');
+    }
+
+    return {
+      seller: {
+        id: seller.id,
+        name: seller.name,
+        sellerCode: seller.sellerCode,
+        school: seller.school,
+        region: seller.region,
+      },
+      product: this.toPublicProduct(product),
+      source: 'default' as const,
+    };
+  }
+
+  private toPublicProduct(product: Product) {
     return {
       id: product.id,
       name: product.name,

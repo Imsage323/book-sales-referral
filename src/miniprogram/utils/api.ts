@@ -12,8 +12,14 @@ function getBaseUrl(): string {
   return (app && app.globalData && app.globalData.apiBaseUrl) || '';
 }
 
+function getBuyerToken(): string {
+  const app = getApp();
+  return (app && app.globalData && app.globalData.buyerToken) || wx.getStorageSync('buyerToken') || '';
+}
+
 export function request<T = any>(options: ApiRequestOptions): Promise<T> {
   const baseUrl = getBaseUrl();
+  const buyerToken = getBuyerToken();
 
   return new Promise((resolve, reject) => {
     wx.request({
@@ -22,12 +28,18 @@ export function request<T = any>(options: ApiRequestOptions): Promise<T> {
       data: options.data,
       header: {
         'Content-Type': 'application/json',
+        ...(buyerToken ? { Authorization: `Bearer ${buyerToken}` } : {}),
         ...(options.header || {}),
       },
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else {
+          if (res.statusCode === 401 && buyerToken) {
+            wx.removeStorageSync('buyerToken');
+            const app = getApp();
+            if (app && app.globalData) app.globalData.buyerToken = '';
+          }
           const data = res.data as any;
           let message = data && data.message;
           if (Array.isArray(message)) {

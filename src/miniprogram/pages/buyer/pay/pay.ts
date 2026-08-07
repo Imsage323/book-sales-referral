@@ -58,7 +58,7 @@ Page({
   async loadOrder(orderId: string) {
     this.setData({ loading: true });
     try {
-      const detail = await get<OrderDetail>(`/orders/${orderId}`);
+      const detail = await get<OrderDetail>(`/buyer/orders/${orderId}`);
       const order = detail.order;
       this.setData({ order, statusText: STATUS_TEXT[order.status] || order.status });
     } catch (err) {
@@ -78,7 +78,7 @@ Page({
     try {
       // mock 模式后端直接返回订单（无 paySign）；真实模式返回 wx.requestPayment 参数
       const result = await post<WxPaymentParams | Record<string, never>>(
-        `/orders/${orderId}/pay`,
+        `/buyer/orders/${orderId}/pay`,
         {},
       );
       if (result && (result as WxPaymentParams).paySign) {
@@ -95,7 +95,7 @@ Page({
           });
         });
         // 主动对账，防止支付回调延迟/丢失导致订单卡住
-        await post(`/orders/${orderId}/pay-sync`, {});
+        await post(`/buyer/orders/${orderId}/pay-sync`, {});
       }
       wx.showToast({ title: '支付成功', icon: 'success' });
       wx.navigateTo({

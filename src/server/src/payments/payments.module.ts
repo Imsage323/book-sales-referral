@@ -6,10 +6,12 @@ import { OrdersModule } from '../orders/orders.module';
 import { WxPayService } from './wx-pay.service';
 import { WxLoginService } from './wx-login.service';
 import { WxController } from './wx.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PaymentEvent, Order]),
+    AuthModule,
     forwardRef(() => OrdersModule),
   ],
   controllers: [WxController],

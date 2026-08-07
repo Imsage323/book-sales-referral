@@ -5,12 +5,13 @@ import { OrdersService } from './orders.service';
 import { Order, OrderStatus } from './entities/order.entity';
 import { OrderAddress } from './entities/order-address.entity';
 import { Product } from '../products/entities/product.entity';
-import { Seller, SellerStatus } from '../sellers/entities/seller.entity';
+import { Seller } from '../sellers/entities/seller.entity';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
 import { WxPayService } from '../payments/wx-pay.service';
 
 const WX_ENV_KEYS = [
-  'WX_PAY_ENABLED',
+  'NODE_ENV',
+  'WX_PAY_MODE',
   'WX_APPID',
   'WX_MCHID',
   'WX_PAY_SERIAL_NO',
@@ -25,12 +26,17 @@ describe('OrdersService', () => {
   let service: OrdersService;
   let orderRepo: Repository<Order>;
   let paymentEventRepo: Repository<PaymentEvent>;
-  let wxPayService: { createJsapiOrder: jest.Mock; queryByOutTradeNo: jest.Mock };
+  let wxPayService: {
+    createJsapiOrder: jest.Mock;
+    queryByOutTradeNo: jest.Mock;
+  };
   let envBackup: Record<string, string | undefined>;
 
   beforeEach(async () => {
     envBackup = Object.fromEntries(WX_ENV_KEYS.map((k) => [k, process.env[k]]));
     WX_ENV_KEYS.forEach((k) => delete process.env[k]);
+    process.env.NODE_ENV = 'test';
+    process.env.WX_PAY_MODE = 'mock';
 
     wxPayService = {
       createJsapiOrder: jest.fn(),
@@ -69,7 +75,9 @@ describe('OrdersService', () => {
 
     service = module.get<OrdersService>(OrdersService);
     orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
-    paymentEventRepo = module.get<Repository<PaymentEvent>>(getRepositoryToken(PaymentEvent));
+    paymentEventRepo = module.get<Repository<PaymentEvent>>(
+      getRepositoryToken(PaymentEvent),
+    );
   });
 
   afterEach(() => {
@@ -94,8 +102,12 @@ describe('OrdersService', () => {
 
     jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
     jest.spyOn(orderRepo, 'save').mockImplementation(async (o: any) => o);
-    jest.spyOn(paymentEventRepo, 'create').mockImplementation((dto: any) => dto as PaymentEvent);
-    jest.spyOn(paymentEventRepo, 'save').mockImplementation(async (dto: any) => dto);
+    jest
+      .spyOn(paymentEventRepo, 'create')
+      .mockImplementation((dto: any) => dto as PaymentEvent);
+    jest
+      .spyOn(paymentEventRepo, 'save')
+      .mockImplementation(async (dto: any) => dto);
 
     const result = (await service.payOrder('order-id')) as Order;
 
@@ -116,7 +128,9 @@ describe('OrdersService', () => {
 
     jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
 
-    await expect(service.payOrder('order-id')).rejects.toThrow('订单当前状态不允许支付');
+    await expect(service.payOrder('order-id')).rejects.toThrow(
+      '订单当前状态不允许支付',
+    );
   });
 
   it('should reject payment when order does not exist', async () => {
@@ -125,8 +139,8 @@ describe('OrdersService', () => {
     await expect(service.payOrder('missing-id')).rejects.toThrow('订单不存在');
   });
 
-  it('should return wx payment params without marking paid when WX_PAY_ENABLED and keys are set', async () => {
-    process.env.WX_PAY_ENABLED = 'true';
+  it('should return wx payment params without marking paid in complete real mode', async () => {
+    process.env.WX_PAY_MODE = 'real';
     process.env.WX_APPID = 'wx-appid';
     process.env.WX_MCHID = 'mchid';
     process.env.WX_PAY_SERIAL_NO = 'serial';
@@ -160,11 +174,52 @@ describe('OrdersService', () => {
     expect(result).toEqual(paymentParams);
     expect(order.status).toBe(OrderStatus.PENDING_PAYMENT);
     expect(orderRepo.save).not.toHaveBeenCalled();
-    expect(wxPayService.createJsapiOrder).toHaveBeenCalledWith(order, expect.any(String));
+    expect(wxPayService.createJsapiOrder).toHaveBeenCalledWith(
+      order,
+      expect.any(String),
+    );
+  });
+
+  it('should fail closed without explicit real or mock payment mode', async () => {
+    delete process.env.WX_PAY_MODE;
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PENDING_PAYMENT,
+      totalAmount: 200,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save');
+
+    await expect(service.payOrder('order-id')).rejects.toThrow(
+      '微信支付暂不可用',
+    );
+    expect(orderRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('should reject mock payment in production without changing the order', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.WX_PAY_MODE = 'mock';
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PENDING_PAYMENT,
+      totalAmount: 200,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save');
+
+    await expect(service.payOrder('order-id')).rejects.toThrow(
+      '微信支付暂不可用',
+    );
+    expect(order.status).toBe(OrderStatus.PENDING_PAYMENT);
+    expect(orderRepo.save).not.toHaveBeenCalled();
   });
 
   it('should mark paid via syncPayment when wx side reports SUCCESS', async () => {
-    process.env.WX_PAY_ENABLED = 'true';
+    process.env.WX_PAY_MODE = 'real';
     process.env.WX_APPID = 'wx-appid';
     process.env.WX_MCHID = 'mchid';
     process.env.WX_PAY_SERIAL_NO = 'serial';
@@ -183,8 +238,12 @@ describe('OrdersService', () => {
 
     jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
     jest.spyOn(orderRepo, 'save').mockImplementation(async (o: any) => o);
-    jest.spyOn(paymentEventRepo, 'create').mockImplementation((dto: any) => dto as PaymentEvent);
-    jest.spyOn(paymentEventRepo, 'save').mockImplementation(async (dto: any) => dto);
+    jest
+      .spyOn(paymentEventRepo, 'create')
+      .mockImplementation((dto: any) => dto as PaymentEvent);
+    jest
+      .spyOn(paymentEventRepo, 'save')
+      .mockImplementation(async (dto: any) => dto);
     wxPayService.queryByOutTradeNo.mockResolvedValue({
       out_trade_no: order.orderNo,
       transaction_id: 'wx-tx-1',

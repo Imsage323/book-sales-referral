@@ -163,4 +163,48 @@ describe('RewardsService', () => {
     const best3 = await service.findBestRule('other-product', 'seller-1');
     expect(best3?.id).toBe('3');
   });
+
+  it('should summarize reward records by status and type', async () => {
+    jest.spyOn(recordRepo, 'createQueryBuilder').mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          status: RewardStatus.READY,
+          rewardType: RewardType.SELLER,
+          count: '2',
+          totalAmount: '300',
+        },
+        {
+          status: RewardStatus.READY,
+          rewardType: RewardType.REFERRAL,
+          count: '1',
+          totalAmount: '50',
+        },
+        {
+          status: RewardStatus.PROCESSED,
+          rewardType: RewardType.SELLER,
+          count: '3',
+          totalAmount: '600',
+        },
+      ]),
+    } as any);
+
+    await expect(service.getRecordsSummary('seller-1')).resolves.toEqual({
+      sellerId: 'seller-1',
+      totalAmount: 950,
+      count: 6,
+      byStatus: {
+        ready: { count: 3, totalAmount: 350 },
+        processed: { count: 3, totalAmount: 600 },
+      },
+      byType: {
+        seller: { count: 5, totalAmount: 900 },
+        referral: { count: 1, totalAmount: 50 },
+      },
+    });
+  });
 });

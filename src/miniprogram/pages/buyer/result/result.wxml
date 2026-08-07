@@ -1,28 +1,62 @@
 <view class="container">
-  <view wx:if="{{loading}}">
-    <text>加载中...</text>
+  <view wx:if="{{loading}}" class="state-tip">
+    <text>正在确认订单...</text>
   </view>
 
-  <view wx:elif="{{order}}">
-    <view>
-      <text>订单号：{{order.orderNo}}</text>
-    </view>
-    <view>
-      <text>状态：{{order.status}}</text>
-    </view>
-    <view>
-      <text>金额：¥{{order.totalAmount / 100}}</text>
-    </view>
-    <view>
-      <text>数量：{{order.quantity}}</text>
+  <view wx:elif="{{order}}" class="result-wrap">
+    <view class="success-seal">✓</view>
+    <view class="result-title">收货信息已提交</view>
+    <view class="result-subtitle">我们会按订单状态安排发货，并保留完整售后记录。</view>
+
+    <view class="paper-card order-card">
+      <view class="card-label">订单摘要</view>
+      <view class="info-row">
+        <text class="info-key">订单号</text>
+        <text class="info-value order-no">{{order.orderNo}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-key">状态</text>
+        <text class="status-chip">{{statusText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-key">金额</text>
+        <text class="info-value">¥{{order.totalAmount / 100}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-key">数量</text>
+        <text class="info-value">{{order.quantity}} 本</text>
+      </view>
     </view>
 
-    <view wx:if="{{showGroupButton}}">
-      <button type="primary" bindtap="onJoinGroup">加入售后群</button>
+    <view wx:if="{{address}}" class="paper-card">
+      <view class="card-label">收货信息</view>
+      <view class="address-name">{{address.recipient}} · {{address.phone}}</view>
+      <view class="address-line">{{address.province}}{{address.city}}{{address.district}}{{address.address}}</view>
     </view>
+
+    <view class="paper-card timeline-card">
+      <view class="timeline-dot"></view>
+      <view class="timeline-content">
+        <view class="timeline-title">物流与售后</view>
+        <view class="timeline-copy">{{shippingText}}</view>
+        <view class="timeline-copy">如需取消、退款或修改信息，请通过微信客服提交订单号，由工作人员核对处理。</view>
+      </view>
+    </view>
+
+    <button class="contact-btn" open-type="contact">联系微信客服</button>
+
+    <view wx:if="{{showGroupButton}}" class="group-card">
+      <view class="group-copy">
+        <view class="group-title">学习交流群（自愿加入）</view>
+        <view class="group-note">不加入也不影响订单、物流和售后服务。</view>
+      </view>
+      <button class="group-btn" bindtap="onJoinGroup">查看入群码</button>
+    </view>
+
+    <view class="privacy-foot" bindtap="openPrivacyContract">查看小程序用户隐私保护指引</view>
   </view>
 
-  <view wx:else>
+  <view wx:else class="state-tip">
     <text>未找到订单</text>
   </view>
 </view>
