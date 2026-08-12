@@ -147,12 +147,24 @@ export class OrdersService {
     return { items, total };
   }
 
+  /** 同时接受内部订单 id 和商户订单号（orderNo），后者用于微信订单中心跳转 */
   async findOneForBuyer(
-    id: string,
+    idOrOrderNo: string,
     openid: string,
   ): Promise<{ order: Order; address: OrderAddress | null }> {
-    await this.assertBuyerOwnsOrder(id, openid);
-    return this.findOne(id);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrOrderNo,
+      );
+    const order = await this.orderRepo.findOne({
+      where: isUuid
+        ? { id: idOrOrderNo, openid }
+        : { orderNo: idOrOrderNo, openid },
+    });
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+    return this.findOne(order.id);
   }
 
   async updateAddress(id: string, dto: OrderAddressDto): Promise<OrderAddress> {

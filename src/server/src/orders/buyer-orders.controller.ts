@@ -39,9 +39,10 @@ export class BuyerOrdersController {
     return this.ordersService.findMine(req.user.openid, query);
   }
 
+  // 详情接口同时接受内部订单 id 和商户订单号（orderNo），后者用于微信订单中心跳转
   @Get(':id')
-  findOne(@Req() req: BuyerRequest, @Param('id', ParseUUIDPipe) id: string) {
-    return this.ordersService.findOneForBuyer(id, req.user.openid);
+  findOne(@Req() req: BuyerRequest, @Param('id') idOrOrderNo: string) {
+    return this.ordersService.findOneForBuyer(idOrOrderNo, req.user.openid);
   }
 
   @Patch(':id/address')

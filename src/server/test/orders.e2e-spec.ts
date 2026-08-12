@@ -73,6 +73,24 @@ describe('OrdersController (e2e)', () => {
     expect(res.body.order.id).toBe(createRes.body.id);
   });
 
+  it('should get order details by orderNo (微信订单中心入口)', async () => {
+    const createRes = await createBuyerOrder(app, buyerToken, {
+      productId,
+      sellerId,
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/buyer/orders/${createRes.body.orderNo}`)
+      .set('Authorization', `Bearer ${buyerToken}`)
+      .expect(200);
+    expect(res.body.order.id).toBe(createRes.body.id);
+
+    await request(app.getHttpServer())
+      .get(`/api/buyer/orders/${createRes.body.orderNo}`)
+      .set('Authorization', `Bearer ${otherBuyerToken}`)
+      .expect(404);
+  });
+
   it('should hide one buyer order from another buyer', async () => {
     const createRes = await createBuyerOrder(app, buyerToken, {
       productId,

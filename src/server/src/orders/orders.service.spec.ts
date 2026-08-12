@@ -257,4 +257,49 @@ describe('OrdersService', () => {
     expect(result.wxTransactionId).toBe('wx-tx-1');
     expect(wxPayService.queryByOutTradeNo).toHaveBeenCalledWith(order.orderNo);
   });
+
+  it('should find buyer order by orderNo (微信订单中心入口)', async () => {
+    const order = {
+      id: '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
+      orderNo: 'O-20260812-0001',
+    } as Order;
+    const findOneSpy = jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(service, 'findOne').mockResolvedValue({ order, address: null });
+
+    const result = await service.findOneForBuyer('O-20260812-0001', 'openid-1');
+
+    expect(findOneSpy).toHaveBeenCalledWith({
+      where: { orderNo: 'O-20260812-0001', openid: 'openid-1' },
+    });
+    expect(result.order).toBe(order);
+  });
+
+  it('should find buyer order by internal id', async () => {
+    const order = {
+      id: '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
+      orderNo: 'O-20260812-0001',
+    } as Order;
+    const findOneSpy = jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(service, 'findOne').mockResolvedValue({ order, address: null });
+
+    await service.findOneForBuyer(
+      '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
+      'openid-1',
+    );
+
+    expect(findOneSpy).toHaveBeenCalledWith({
+      where: {
+        id: '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
+        openid: 'openid-1',
+      },
+    });
+  });
+
+  it('should reject buyer order lookup by orderNo when not owned', async () => {
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(null);
+
+    await expect(
+      service.findOneForBuyer('O-20260812-0001', 'openid-1'),
+    ).rejects.toThrow('订单不存在');
+  });
 });
