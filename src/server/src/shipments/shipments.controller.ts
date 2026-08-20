@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
   Post,
   Body,
   Query,
@@ -19,6 +20,12 @@ export class ShipmentsController {
   @Post()
   create(@Body() dto: CreateShipmentDto) {
     return this.shipmentsService.create(dto);
+  }
+
+  /** 手动重试微信发货信息同步 */
+  @Post(':id/wx-sync')
+  retryWxSync(@Param('id') id: string) {
+    return this.shipmentsService.retryWxSync(id);
   }
 
   @Get()

@@ -15,6 +15,7 @@ describe('ShipmentsController (e2e)', () => {
   let buyerToken: string;
 
   beforeAll(async () => {
+    process.env.WX_TRADE_MODE = 'mock';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -66,27 +67,45 @@ describe('ShipmentsController (e2e)', () => {
   });
 
   afterAll(async () => {
+    delete process.env.WX_TRADE_MODE;
     await app.close();
   });
 
-  it('should create a shipment', async () => {
+  it('should create a shipment and sync shipping info to wx (mock)', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/shipments')
       .set('Authorization', `Bearer ${token}`)
       .send({
         orderId,
         company: '顺丰速运',
+        companyId: 'SF',
         trackingNo: 'SF1234567890',
       })
       .expect(201);
     expect(res.body.company).toBe('顺丰速运');
     expect(res.body.trackingNo).toBe('SF1234567890');
+    expect(res.body.wxSyncStatus).toBe('success');
+    expect(res.body.wxSyncedAt).toBeTruthy();
 
     const orderRes = await request(app.getHttpServer())
       .get(`/api/orders/${orderId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(orderRes.body.order.status).toBe('aftersale_waiting');
+  });
+
+  it('should reject wx-sync retry for an already synced shipment', async () => {
+    const listRes = await request(app.getHttpServer())
+      .get('/api/shipments')
+      .set('Authorization', `Bearer ${token}`)
+      .query({ orderId })
+      .expect(200);
+    const shipmentId = listRes.body.items[0].id;
+
+    await request(app.getHttpServer())
+      .post(`/api/shipments/${shipmentId}/wx-sync`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
   });
 
   it('should list shipments', async () => {

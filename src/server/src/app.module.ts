@@ -18,6 +18,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { RewardsModule } from './rewards/rewards.module';
+import { WxTradeModule } from './wx-trade/wx-trade.module';
 import { OperationLogInterceptor } from './operation-logs/operation-log.interceptor';
 import { validateProductionReadiness } from './config/production-readiness';
 
@@ -47,6 +48,7 @@ import { validateProductionReadiness } from './config/production-readiness';
     ShipmentsModule,
     LedgerModule,
     RewardsModule,
+    WxTradeModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'admin-dist'),
       exclude: ['/api*'],

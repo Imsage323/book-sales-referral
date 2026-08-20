@@ -93,6 +93,29 @@
           <el-table-column prop="trackingNo" label="快递单号" />
           <el-table-column prop="shippedAt" label="发货时间" />
           <el-table-column prop="aftersaleEnd" label="售后期结束" />
+          <el-table-column label="微信同步" width="140">
+            <template #default="{ row }">
+              <el-tag :type="WX_SYNC_TAG[row.wxSyncStatus] || 'info'" size="small">
+                {{ WX_SYNC_TEXT[row.wxSyncStatus] || row.wxSyncStatus || '待同步' }}
+              </el-tag>
+              <el-tooltip v-if="row.wxSyncError" :content="row.wxSyncError" placement="top">
+                <span class="wx-sync-error-hint">!</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.wxSyncStatus === 'failed'"
+                size="small"
+                type="primary"
+                link
+                @click="retryWxSync(row)"
+              >
+                重试同步
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
     </el-dialog>
@@ -122,7 +145,22 @@
     <el-dialog v-model="shipVisible" title="发货" width="400px">
       <el-form :model="shipForm" label-width="100px">
         <el-form-item label="快递公司">
-          <el-input v-model="shipForm.company" />
+          <el-select
+            v-model="shipForm.company"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或输入快递公司"
+            style="width: 100%"
+            @change="onShipCompanyChange"
+          >
+            <el-option
+              v-for="item in expressCompanies"
+              :key="item.deliveryId"
+              :label="item.deliveryName"
+              :value="item.deliveryName"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="快递单号">
           <el-input v-model="shipForm.trackingNo" />
@@ -156,7 +194,21 @@ const currentShipments = ref<any[]>([]);
 
 const query = reactive({ keyword: '', status: '', sellerId: '', page: 1, pageSize: 10 });
 const statusForm = reactive({ status: '', remark: '' });
-const shipForm = reactive({ company: '', trackingNo: '' });
+const shipForm = reactive({ company: '', companyId: '', trackingNo: '' });
+const expressCompanies = ref<any[]>([]);
+
+const WX_SYNC_TEXT: Record<string, string> = {
+  success: '已同步',
+  failed: '同步失败',
+  pending: '待同步',
+  skipped: '未启用',
+};
+const WX_SYNC_TAG: Record<string, string> = {
+  success: 'success',
+  failed: 'danger',
+  pending: 'info',
+  skipped: 'info',
+};
 
 const statusOptions = [
   { value: 'pending_payment', label: '待支付' },
@@ -237,11 +289,25 @@ async function submitStatus() {
   }
 }
 
-function openShipDialog(row: any) {
+async function openShipDialog(row: any) {
   currentOrder.value = row;
   shipForm.company = '';
+  shipForm.companyId = '';
   shipForm.trackingNo = '';
   shipVisible.value = true;
+  if (expressCompanies.value.length === 0) {
+    try {
+      const { data } = await api.get('/wx-trade/express-companies');
+      expressCompanies.value = data;
+    } catch {
+      // 编码表拉取失败时仍可手动输入快递公司名称
+    }
+  }
+}
+
+function onShipCompanyChange(value: string) {
+  const hit = expressCompanies.value.find((c) => c.deliveryName === value);
+  shipForm.companyId = hit ? hit.deliveryId : '';
 }
 
 async function submitShip() {
@@ -249,6 +315,7 @@ async function submitShip() {
     await api.post('/shipments', {
       orderId: currentOrder.value.id,
       company: shipForm.company,
+      companyId: shipForm.companyId || undefined,
       trackingNo: shipForm.trackingNo,
     });
     ElMessage.success('发货成功');
@@ -256,6 +323,21 @@ async function submitShip() {
     loadData();
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || '发货失败');
+  }
+}
+
+async function retryWxSync(row: any) {
+  try {
+    await api.post(`/shipments/${row.id}/wx-sync`);
+    ElMessage.success('微信发货信息同步成功');
+    if (currentOrder.value) {
+      const shipRes = await api.get('/shipments', {
+        params: { orderId: currentOrder.value.id },
+      });
+      currentShipments.value = shipRes.data.items;
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '微信发货信息同步失败');
   }
 }
 
@@ -273,5 +355,18 @@ onMounted(() => {
 .address-section h4,
 .shipment-section h4 {
   margin-bottom: 10px;
+}
+.wx-sync-error-hint {
+  display: inline-block;
+  margin-left: 4px;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 50%;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 11px;
+  cursor: help;
 }
 </style>

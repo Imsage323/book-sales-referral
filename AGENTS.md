@@ -72,6 +72,8 @@ demo 冒烟测试：`demo/smoke-test.cjs`（Playwright，需先本地静态服�
 - `orders`：订单（订单号格式 `O-YYYYMMDD-XXXX`）、地址、发货（`shipments`）、退款记录、支付事件（`payment_events`）。状态流转含 `pending_payment → paid → aftersale_waiting → settlement_ready`。
 - `payments`：微信支付与微信登录。`wx-pay.service.ts` 用官方 `wechatpay-axios-plugin`（APIv3，微信支付公钥验签模式）做 JSAPI 下单、`wx.requestPayment` 参数二次签名、回调验签+AES-256-GCM 解密、按商户订单号主动查询；`wx-login.service.ts` 用 `jscode2session` 换 openid（未配置 AppID/Secret 时返回占位 openid）；`wx.controller.ts` 暴露公开接口 `POST /api/wx/login` 与 `POST /api/wx/notify`。`main.ts` 已开启 `rawBody` 供回调验签。
 - `rewards`：返点规则匹配优先级「产品+销售方 → 产品 → 销售方 → 默认规则」，返点记录与一层直接推荐奖励；`settlement.service.ts` 每日凌晨 2 点定时结算（`@nestjs/schedule`），支持手动触发。
+- `wx-trade`：微信交易管理（发货信息管理服务 + 订单中心）。`wx-trade.service.ts` 封装微信服务端 API（Node https），鉴权优先读云托管容器免维护 token 文件 `/.tencentcloudbase/wx/cloudbase_access_token`，否则用 `cgi-bin/stable_token`；`WX_TRADE_MODE=real/mock/disabled` 控制运行模式（mock 仅限 development/test，disabled 跳过同步不阻断发货）。管理接口：`GET /api/wx-trade/status`（开通诊断）、`GET /api/wx-trade/express-companies`（运力编码表缓存 1h）、`POST /api/wx-trade/order-detail-path`（配置订单中心跳转 path）。
+- `shipments`：发货（`shipments` 表含 `companyId` 微信运力编码与 `wxSyncStatus/wxSyncError/wxSyncedAt` 同步状态字段）；创建发货记录后 best-effort 调 `upload_shipping_info` 同步微信，失败不阻断，`POST /api/shipments/:id/wx-sync` 手动重试。
 - `ledger`：台账 Excel 导出（`GET /api/ledger/export`，依赖 `xlsx`）。
 - `operation-logs`：操作日志，`OperationLogInterceptor` 全局拦截、best-effort 写入（失败不阻断业务）。
 
@@ -88,7 +90,7 @@ demo 冒烟测试：`demo/smoke-test.cjs`（Playwright，需先本地静态服�
 ## 环境配置与安全
 
 - 后端环境变量在 `src/server/.env`（本地开发用，含 `DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_NAME/JWT_SECRET/JWT_EXPIRES_IN/PORT`）；生产示例见 `src/server/.env.example`。本地 MySQL 为 XAMPP（`D:\Sql`），数据库 `book_sales`，root 无密码。
-- 微信支付/登录相关 `WX_*` 变量（集中由 `src/config/wx.config.ts` 读取）：`WX_APPID`、`WX_SECRET`（小程序登录）、`WX_MCHID`、`WX_PAY_SERIAL_NO`、`WX_PAY_APIV3_KEY`、`WX_PAY_PRIVATE_KEY` / `WX_PAY_PUBLIC_KEY`（PEM 内容单行存储、`\n` 转义）、`WX_PAY_PUBLIC_KEY_ID`、`WX_PAY_NOTIFY_URL`、`WX_PAY_ENABLED`。`WX_PAY_ENABLED=true` 且密钥齐全才走真实支付，否则 `POST /api/orders/:id/pay` 保持 mock 行为（E2E/单测默认 mock 模式）。
+- 微信支付/登录相关 `WX_*` 变量（集中由 `src/config/wx.config.ts` 读取）：`WX_APPID`、`WX_SECRET`（小程序登录）、`WX_MCHID`、`WX_PAY_SERIAL_NO`、`WX_PAY_APIV3_KEY`、`WX_PAY_PRIVATE_KEY` / `WX_PAY_PUBLIC_KEY`（PEM 内容单行存储、`\n` 转义）、`WX_PAY_PUBLIC_KEY_ID`、`WX_PAY_NOTIFY_URL`、`WX_PAY_ENABLED`。`WX_PAY_ENABLED=true` 且密钥齐全才走真实支付，否则 `POST /api/orders/:id/pay` 保持 mock 行为（E2E/单测默认 mock 模式）。微信交易管理（发货信息同步）由 `src/config/wx-trade.config.ts` 读取 `WX_TRADE_MODE`（`real/mock/disabled`，缺省 disabled 跳过同步）。
 - **绝不要提交**真实密钥：`.env*`、微信支付商户密钥、JWT 生产密钥等。`.dockerignore` 会排除 `.env*` 和 `*.md`；生产值只在微信云托管控制台环境变量中配置。
 - 注意：仓库历史上曾提交过含本地开发值的 `src/server/.env`（JWT_SECRET 等），如复用该密钥到生产必须先更换。
 
