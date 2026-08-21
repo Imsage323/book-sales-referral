@@ -5,6 +5,7 @@ import {
   Inject,
   forwardRef,
   ServiceUnavailableException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between } from 'typeorm';
@@ -25,9 +26,12 @@ import {
 } from '../payments/wx-pay.service';
 import { isWxPayEnabled, isWxPayMockEnabled } from '../config/wx.config';
 import { generateOrderNo } from './order-number.generator';
+import { SettlementService } from '../rewards/settlement.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
@@ -41,6 +45,7 @@ export class OrdersService {
     private readonly paymentEventRepo: Repository<PaymentEvent>,
     @Inject(forwardRef(() => WxPayService))
     private readonly wxPayService: WxPayService,
+    private readonly settlementService: SettlementService,
   ) {}
 
   async createForBuyer(dto: CreateOrderDto, openid: string): Promise<Order> {
@@ -266,6 +271,7 @@ export class OrdersService {
       throw new NotFoundException('订单不存在');
     }
     if (this.isPaymentConfirmed(order)) {
+      await this.ensurePaidRewardEstimate(order);
       return order;
     }
     if (!this.canConfirmPayment(order.status)) {
@@ -308,6 +314,7 @@ export class OrdersService {
       throw new NotFoundException('订单不存在');
     }
     if (this.isPaymentConfirmed(order)) {
+      await this.ensurePaidRewardEstimate(order);
       return; // 已确认支付，幂等返回且不重复写支付事件
     }
     if (!this.canConfirmPayment(order.status)) {
@@ -360,7 +367,18 @@ export class OrdersService {
     });
     await this.paymentEventRepo.save(paymentEvent);
 
+    await this.ensurePaidRewardEstimate(order);
+
     return order;
+  }
+
+  private async ensurePaidRewardEstimate(order: Order): Promise<void> {
+    try {
+      await this.settlementService.estimatePaidOrder(order.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`订单 ${order.orderNo} 支付后奖励预估失败: ${message}`);
+    }
   }
 
   private isPaymentConfirmed(order: Order): boolean {

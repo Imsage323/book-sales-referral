@@ -38,7 +38,7 @@ export class InitialSchema1783305843637 implements MigrationInterface {
       `CREATE TABLE \`sellers\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(100) NOT NULL, \`sellerCode\` varchar(50) NOT NULL, \`school\` varchar(100) NULL, \`region\` varchar(100) NULL, \`phone\` varchar(50) NULL, \`parentId\` varchar(255) NULL, \`status\` enum ('active', 'disabled') NOT NULL DEFAULT 'active', \`remark\` text NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`parent_id\` varchar(36) NULL, UNIQUE INDEX \`IDX_0b10ae08586c7678f669c41a9c\` (\`sellerCode\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
-      `CREATE TABLE \`seller_qrcodes\` (\`id\` varchar(36) NOT NULL, \`sellerId\` varchar(255) NOT NULL, \`productId\` varchar(255) NULL, \`imageUrl\` varchar(2000) NOT NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`seller_id\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+      `CREATE TABLE \`seller_qrcodes\` (\`id\` varchar(36) NOT NULL, \`sellerId\` varchar(255) NOT NULL, \`productId\` varchar(255) NULL, \`imageUrl\` longtext NOT NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`seller_id\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
       `CREATE TABLE \`scan_logs\` (\`id\` varchar(36) NOT NULL, \`sellerCode\` varchar(50) NOT NULL, \`sellerId\` varchar(255) NULL, \`productId\` varchar(255) NULL, \`openid\` varchar(100) NOT NULL, \`scene\` varchar(100) NULL, \`ip\` varchar(100) NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,

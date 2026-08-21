@@ -3,7 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RewardsService } from './rewards.service';
 import { RewardRule, RewardRuleType } from './entities/reward-rule.entity';
-import { RewardRecord, RewardStatus, RewardType } from './entities/reward-record.entity';
+import {
+  RewardRecord,
+  RewardStatus,
+  RewardType,
+} from './entities/reward-record.entity';
 import { Order, OrderStatus } from '../orders/entities/order.entity';
 import { Product } from '../products/entities/product.entity';
 import { Seller } from '../sellers/entities/seller.entity';
@@ -12,6 +16,8 @@ describe('RewardsService', () => {
   let service: RewardsService;
   let ruleRepo: Repository<RewardRule>;
   let recordRepo: Repository<RewardRecord>;
+  const originalReferralEnabled = process.env.REFERRAL_REWARD_ENABLED;
+  const originalReferralAmount = process.env.REFERRAL_REWARD_CENTS_PER_BOOK;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,8 +35,17 @@ describe('RewardsService', () => {
     }).compile();
 
     service = module.get<RewardsService>(RewardsService);
-    ruleRepo = module.get<Repository<RewardRule>>(getRepositoryToken(RewardRule));
-    recordRepo = module.get<Repository<RewardRecord>>(getRepositoryToken(RewardRecord));
+    ruleRepo = module.get<Repository<RewardRule>>(
+      getRepositoryToken(RewardRule),
+    );
+    recordRepo = module.get<Repository<RewardRecord>>(
+      getRepositoryToken(RewardRecord),
+    );
+  });
+
+  afterEach(() => {
+    restoreEnv('REFERRAL_REWARD_ENABLED', originalReferralEnabled);
+    restoreEnv('REFERRAL_REWARD_CENTS_PER_BOOK', originalReferralAmount);
   });
 
   it('should calculate fixed per book reward', () => {
@@ -103,12 +118,14 @@ describe('RewardsService', () => {
   });
 
   it('should create seller and referral rewards', async () => {
+    process.env.REFERRAL_REWARD_ENABLED = 'true';
+    process.env.REFERRAL_REWARD_CENTS_PER_BOOK = '1';
     const order = {
       id: 'order-1',
       productId: 'product-1',
       sellerId: 'seller-1',
-      quantity: 2,
-      totalAmount: 200,
+      quantity: 1,
+      totalAmount: 100,
     } as Order;
     const product = {
       id: 'product-1',
@@ -125,26 +142,89 @@ describe('RewardsService', () => {
       orderBy: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
     } as any);
-    jest.spyOn(ruleRepo, 'create').mockImplementation((dto: any) => dto as RewardRule);
-    jest.spyOn(recordRepo, 'create').mockImplementation((dto: any) => dto as RewardRecord);
+    jest
+      .spyOn(ruleRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRule);
+    jest
+      .spyOn(recordRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRecord);
 
     const records = await service.calculateRewards(order, product, seller);
 
     expect(records).toHaveLength(2);
     expect(records[0].rewardType).toBe(RewardType.SELLER);
-    expect(records[0].amount).toBe(2); // 默认 1分/本
+    expect(records[0].amount).toBe(1); // 默认 1分/本
     expect(records[0].status).toBe(RewardStatus.READY);
     expect(records[1].rewardType).toBe(RewardType.REFERRAL);
-    expect(records[1].amount).toBe(1); // 0.5分/本 × 2
+    expect(records[1].amount).toBe(1); // 1分/本 × 1
     expect(records[1].beneficiaryId).toBe('seller-parent');
+  });
+
+  it('should keep referral rewards disabled by default', async () => {
+    delete process.env.REFERRAL_REWARD_ENABLED;
+    delete process.env.REFERRAL_REWARD_CENTS_PER_BOOK;
+    const order = {
+      id: 'order-1',
+      productId: 'product-1',
+      sellerId: 'seller-1',
+      quantity: 1,
+      totalAmount: 100,
+    } as Order;
+    const seller = { id: 'seller-1', parentId: 'seller-parent' } as Seller;
+
+    jest.spyOn(ruleRepo, 'createQueryBuilder').mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      orWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    } as any);
+    jest
+      .spyOn(ruleRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRule);
+    jest
+      .spyOn(recordRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRecord);
+
+    const records = await service.calculateRewards(
+      order,
+      { id: 'product-1' } as Product,
+      seller,
+    );
+
+    expect(records).toHaveLength(1);
+    expect(records[0].rewardType).toBe(RewardType.SELLER);
   });
 
   it('should find best rule by priority', async () => {
     const rules = [
-      { id: '1', productId: 'product-1', sellerId: 'seller-1', ruleType: RewardRuleType.FIXED_PER_BOOK, isDefault: false } as unknown as RewardRule,
-      { id: '2', productId: 'product-1', sellerId: null, ruleType: RewardRuleType.FIXED_PER_BOOK, isDefault: false } as unknown as RewardRule,
-      { id: '3', productId: null, sellerId: 'seller-1', ruleType: RewardRuleType.FIXED_PER_BOOK, isDefault: false } as unknown as RewardRule,
-      { id: '4', productId: null, sellerId: null, ruleType: RewardRuleType.FIXED_PER_BOOK, isDefault: true } as unknown as RewardRule,
+      {
+        id: '1',
+        productId: 'product-1',
+        sellerId: 'seller-1',
+        ruleType: RewardRuleType.FIXED_PER_BOOK,
+        isDefault: false,
+      } as unknown as RewardRule,
+      {
+        id: '2',
+        productId: 'product-1',
+        sellerId: null,
+        ruleType: RewardRuleType.FIXED_PER_BOOK,
+        isDefault: false,
+      } as unknown as RewardRule,
+      {
+        id: '3',
+        productId: null,
+        sellerId: 'seller-1',
+        ruleType: RewardRuleType.FIXED_PER_BOOK,
+        isDefault: false,
+      } as unknown as RewardRule,
+      {
+        id: '4',
+        productId: null,
+        sellerId: null,
+        ruleType: RewardRuleType.FIXED_PER_BOOK,
+        isDefault: true,
+      } as unknown as RewardRule,
     ];
 
     jest.spyOn(ruleRepo, 'createQueryBuilder').mockReturnValue({
@@ -208,3 +288,8 @@ describe('RewardsService', () => {
     });
   });
 });
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}

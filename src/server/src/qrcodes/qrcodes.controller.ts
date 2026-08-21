@@ -39,15 +39,13 @@ export class QrcodesController {
 
   @Get(':id/download')
   @UseGuards(JwtAuthGuard)
-  async download(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Res() res: Response,
-  ) {
-    const { buffer, contentType } = await this.qrcodesService.getImageData(id);
+  async download(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const { buffer, contentType, extension } =
+      await this.qrcodesService.getImageData(id);
     res.setHeader('Content-Type', contentType);
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="qrcode-${id}.svg"`,
+      `attachment; filename="qrcode-${id}.${extension}"`,
     );
     res.send(buffer);
   }

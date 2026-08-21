@@ -8,6 +8,7 @@ import { Product } from '../products/entities/product.entity';
 import { Seller } from '../sellers/entities/seller.entity';
 import { PaymentEvent } from '../payments/entities/payment-event.entity';
 import { WxPayService } from '../payments/wx-pay.service';
+import { SettlementService } from '../rewards/settlement.service';
 
 const WX_ENV_KEYS = [
   'NODE_ENV',
@@ -20,6 +21,7 @@ const WX_ENV_KEYS = [
   'WX_PAY_PUBLIC_KEY_ID',
   'WX_PAY_PUBLIC_KEY',
   'WX_PAY_NOTIFY_URL',
+  'REWARD_ESTIMATE_ON_PAID_ENABLED',
 ] as const;
 
 describe('OrdersService', () => {
@@ -31,6 +33,7 @@ describe('OrdersService', () => {
     queryByOutTradeNo: jest.Mock;
   };
   let envBackup: Record<string, string | undefined>;
+  let settlementService: { estimatePaidOrder: jest.Mock };
 
   beforeEach(async () => {
     envBackup = Object.fromEntries(WX_ENV_KEYS.map((k) => [k, process.env[k]]));
@@ -41,6 +44,12 @@ describe('OrdersService', () => {
     wxPayService = {
       createJsapiOrder: jest.fn(),
       queryByOutTradeNo: jest.fn(),
+    };
+    settlementService = {
+      estimatePaidOrder: jest.fn().mockResolvedValue({
+        estimatedCount: 0,
+        skipped: true,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -69,6 +78,10 @@ describe('OrdersService', () => {
         {
           provide: WxPayService,
           useValue: wxPayService,
+        },
+        {
+          provide: SettlementService,
+          useValue: settlementService,
         },
       ],
     }).compile();
@@ -116,6 +129,7 @@ describe('OrdersService', () => {
     expect(result.wxTransactionId).toMatch(/^MOCK-O-20260706-1234-\d+$/);
     expect(orderRepo.save).toHaveBeenCalled();
     expect(paymentEventRepo.save).toHaveBeenCalled();
+    expect(settlementService.estimatePaidOrder).toHaveBeenCalledWith(order.id);
   });
 
   it('should reject payment when order is not pending_payment', async () => {
@@ -362,6 +376,7 @@ describe('OrdersService', () => {
 
     expect(orderRepo.save).not.toHaveBeenCalled();
     expect(paymentEventRepo.save).not.toHaveBeenCalled();
+    expect(settlementService.estimatePaidOrder).toHaveBeenCalledWith(order.id);
   });
 
   it('should reject address submission while payment is unconfirmed', async () => {

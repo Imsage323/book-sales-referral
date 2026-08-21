@@ -23,7 +23,7 @@ export class SellerQrcode {
   @Column({ type: 'uuid', nullable: true })
   productId?: string;
 
-  @Column({ length: 2000 })
+  @Column({ type: 'longtext' })
   imageUrl: string;
 
   @CreateDateColumn()

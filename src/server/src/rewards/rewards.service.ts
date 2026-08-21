@@ -15,6 +15,7 @@ import { UpdateRewardRuleDto } from './dto/update-reward-rule.dto';
 import { QueryRewardRuleDto } from './dto/query-reward-rule.dto';
 import { QueryRewardRecordDto } from './dto/query-reward-record.dto';
 import { UpdateRewardRecordStatusDto } from './dto/update-reward-record-status.dto';
+import { getReferralRewardConfig } from '../config/reward.config';
 
 export interface RewardCalculationResult {
   sellerReward: RewardRecord;
@@ -51,7 +52,14 @@ export class RewardsService {
   async findAllRules(
     query: QueryRewardRuleDto,
   ): Promise<{ items: RewardRule[]; total: number }> {
-    const { productId, sellerId, ruleType, isDefault, page = 1, pageSize = 20 } = query;
+    const {
+      productId,
+      sellerId,
+      ruleType,
+      isDefault,
+      page = 1,
+      pageSize = 20,
+    } = query;
     const where: any = {};
     if (productId) where.productId = productId;
     if (sellerId) where.sellerId = sellerId;
@@ -93,18 +101,16 @@ export class RewardsService {
   ): Promise<RewardRule | null> {
     const qb = this.ruleRepo.createQueryBuilder('rule');
 
-    qb.where(
-      '(rule.productId = :productId AND rule.sellerId = :sellerId)',
-      { productId, sellerId },
-    );
-    qb.orWhere(
-      '(rule.productId = :productId AND rule.sellerId IS NULL)',
-      { productId },
-    );
-    qb.orWhere(
-      '(rule.productId IS NULL AND rule.sellerId = :sellerId)',
-      { sellerId },
-    );
+    qb.where('(rule.productId = :productId AND rule.sellerId = :sellerId)', {
+      productId,
+      sellerId,
+    });
+    qb.orWhere('(rule.productId = :productId AND rule.sellerId IS NULL)', {
+      productId,
+    });
+    qb.orWhere('(rule.productId IS NULL AND rule.sellerId = :sellerId)', {
+      sellerId,
+    });
     qb.orWhere('(rule.isDefault = true)');
 
     qb.orderBy('rule.createdAt', 'DESC');
@@ -120,10 +126,7 @@ export class RewardsService {
     );
   }
 
-  calculateRewardAmount(
-    order: Order,
-    rule: RewardRule,
-  ): number {
+  calculateRewardAmount(order: Order, rule: RewardRule): number {
     switch (rule.ruleType) {
       case RewardRuleType.FIXED_PER_BOOK:
         return order.quantity * (rule.fixedAmount || rule.baseValue || 0);
@@ -143,6 +146,7 @@ export class RewardsService {
     order: Order,
     product: Product,
     seller: Seller,
+    status: RewardStatus = RewardStatus.READY,
   ): Promise<RewardRecord[]> {
     const records: RewardRecord[] = [];
 
@@ -158,7 +162,7 @@ export class RewardsService {
         sellerId: order.sellerId,
         beneficiaryId: order.sellerId,
         rewardType: RewardType.SELLER,
-        status: RewardStatus.READY,
+        status,
         amount: sellerAmount,
         ruleSnapshot: rule as any,
         formula: `${this.describeRule(rule)} × 数量${order.quantity} = ${sellerAmount}分`,
@@ -166,8 +170,13 @@ export class RewardsService {
       }),
     );
 
-    if (seller.parentId) {
-      const referralAmount = order.quantity * 0.5; // 占位：每本 0.5 分推荐奖励
+    const referralConfig = getReferralRewardConfig();
+    if (
+      seller.parentId &&
+      referralConfig.enabled &&
+      referralConfig.fixedAmountPerBook > 0
+    ) {
+      const referralAmount = order.quantity * referralConfig.fixedAmountPerBook;
       records.push(
         this.recordRepo.create({
           orderId: order.id,
@@ -175,10 +184,13 @@ export class RewardsService {
           sellerId: order.sellerId,
           beneficiaryId: seller.parentId,
           rewardType: RewardType.REFERRAL,
-          status: RewardStatus.READY,
+          status,
           amount: referralAmount,
-          ruleSnapshot: { placeholder: '一层直接推荐奖励 0.5分/本' },
-          formula: `0.5分/本 × 数量${order.quantity} = ${referralAmount}分`,
+          ruleSnapshot: {
+            type: 'fixed_per_book',
+            fixedAmount: referralConfig.fixedAmountPerBook,
+          },
+          formula: `${referralConfig.fixedAmountPerBook}分/本 × 数量${order.quantity} = ${referralAmount}分`,
           calculatedAt: new Date(),
         }),
       );
@@ -279,7 +291,9 @@ export class RewardsService {
   }
 
   async createDefaultRuleIfMissing(): Promise<void> {
-    const existing = await this.ruleRepo.findOne({ where: { isDefault: true } });
+    const existing = await this.ruleRepo.findOne({
+      where: { isDefault: true },
+    });
     if (!existing) {
       const rule = this.ruleRepo.create({
         ruleType: RewardRuleType.FIXED_PER_BOOK,

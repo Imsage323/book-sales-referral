@@ -5,6 +5,7 @@ import { QrcodesController } from './qrcodes.controller';
 import { SellerQrcode } from '../sellers/entities/seller-qrcode.entity';
 import { SellersModule } from '../sellers/sellers.module';
 import { ProductsModule } from '../products/products.module';
+import { WxQrcodeService } from './wx-qrcode.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { ProductsModule } from '../products/products.module';
     ProductsModule,
   ],
   controllers: [QrcodesController],
-  providers: [QrcodesService],
+  providers: [QrcodesService, WxQrcodeService],
   exports: [QrcodesService],
 })
 export class QrcodesModule {}

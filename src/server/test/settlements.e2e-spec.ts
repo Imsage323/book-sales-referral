@@ -17,6 +17,9 @@ describe('SettlementController (e2e)', () => {
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.WX_PAY_MODE = 'mock';
+    process.env.REFERRAL_REWARD_ENABLED = 'true';
+    process.env.REFERRAL_REWARD_CENTS_PER_BOOK = '1';
+    process.env.REWARD_ESTIMATE_ON_PAID_ENABLED = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -42,6 +45,7 @@ describe('SettlementController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Settlement Child Seller', parentId: parentSellerId });
     sellerId = sellerRes.body.id;
+    process.env.REWARD_ESTIMATE_SELLER_ID = sellerId;
 
     const productRes = await request(app.getHttpServer())
       .post('/api/products')
@@ -53,13 +57,17 @@ describe('SettlementController (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+    delete process.env.REFERRAL_REWARD_ENABLED;
+    delete process.env.REFERRAL_REWARD_CENTS_PER_BOOK;
+    delete process.env.REWARD_ESTIMATE_ON_PAID_ENABLED;
+    delete process.env.REWARD_ESTIMATE_SELLER_ID;
   });
 
   it('should settle an order after aftersale period and create reward records', async () => {
     const orderRes = await createBuyerOrder(app, buyerToken, {
       productId,
       sellerId,
-      quantity: 2,
+      quantity: 1,
     });
     const orderId = orderRes.body.id;
 
@@ -68,6 +76,18 @@ describe('SettlementController (e2e)', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .send({})
       .expect(201);
+
+    const estimatedRecords = await request(app.getHttpServer())
+      .get('/api/rewards/records')
+      .set('Authorization', `Bearer ${token}`)
+      .query({ orderId })
+      .expect(200);
+    expect(estimatedRecords.body.items).toHaveLength(2);
+    expect(
+      estimatedRecords.body.items.every(
+        (record: { status: string }) => record.status === 'estimated',
+      ),
+    ).toBe(true);
 
     await request(app.getHttpServer())
       .patch(`/api/buyer/orders/${orderId}/address`)
@@ -110,5 +130,10 @@ describe('SettlementController (e2e)', () => {
     const types = recordsRes.body.items.map((r: any) => r.rewardType);
     expect(types).toContain('seller');
     expect(types).toContain('referral');
+    expect(
+      recordsRes.body.items.every(
+        (record: { status: string }) => record.status === 'ready',
+      ),
+    ).toBe(true);
   });
 });

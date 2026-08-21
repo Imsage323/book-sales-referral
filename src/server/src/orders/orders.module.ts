@@ -10,6 +10,7 @@ import { PaymentEvent } from '../payments/entities/payment-event.entity';
 import { PaymentsModule } from '../payments/payments.module';
 import { BuyerOrdersController } from './buyer-orders.controller';
 import { AuthModule } from '../auth/auth.module';
+import { RewardsModule } from '../rewards/rewards.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuthModule } from '../auth/auth.module';
       PaymentEvent,
     ]),
     AuthModule,
+    RewardsModule,
     forwardRef(() => PaymentsModule),
   ],
   controllers: [OrdersController, BuyerOrdersController],

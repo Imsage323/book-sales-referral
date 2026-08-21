@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SellerQrcode } from '../sellers/entities/seller-qrcode.entity';
@@ -6,8 +10,9 @@ import { SellersService } from '../sellers/sellers.service';
 import { ProductsService } from '../products/products.service';
 import { CreateQrcodeDto } from './dto/create-qrcode.dto';
 import { QueryQrcodeDto } from './dto/query-qrcode.dto';
-import { generatePlaceholderQrcode } from './qrcode-image.generator';
 import { SellerStatus } from '../sellers/entities/seller.entity';
+import { WxQrcodeService } from './wx-qrcode.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class QrcodesService {
@@ -16,6 +21,7 @@ export class QrcodesService {
     private readonly repo: Repository<SellerQrcode>,
     private readonly sellersService: SellersService,
     private readonly productsService: ProductsService,
+    private readonly wxQrcodeService: WxQrcodeService,
   ) {}
 
   async create(dto: CreateQrcodeDto): Promise<SellerQrcode> {
@@ -25,14 +31,14 @@ export class QrcodesService {
     }
 
     const qrcode = this.repo.create({
+      id: randomUUID(),
       sellerId: dto.sellerId,
       productId: dto.productId,
       imageUrl: '',
     });
-    const saved = await this.repo.save(qrcode);
-    const scene = this.buildScene(saved.id);
-    saved.imageUrl = generatePlaceholderQrcode(scene);
-    return this.repo.save(saved);
+    const scene = this.buildScene(qrcode.id);
+    qrcode.imageUrl = await this.wxQrcodeService.generate(scene);
+    return this.repo.save(qrcode);
   }
 
   async findAll(
@@ -65,15 +71,29 @@ export class QrcodesService {
     return qrcode;
   }
 
-  async getImageData(id: string): Promise<{ buffer: Buffer; contentType: string }> {
+  async getImageData(
+    id: string,
+  ): Promise<{ buffer: Buffer; contentType: string; extension: string }> {
     const qrcode = await this.findOne(id);
     const dataUrl = qrcode.imageUrl;
-    if (!dataUrl || !dataUrl.startsWith('data:image/svg+xml;base64,')) {
+    const match = dataUrl?.match(
+      /^data:(image\/(?:png|jpeg|jpg|svg\+xml));base64,(.+)$/,
+    );
+    if (!match) {
       throw new NotFoundException('二维码图片不存在');
     }
-    const base64 = dataUrl.replace('data:image/svg+xml;base64,', '');
-    const buffer = Buffer.from(base64, 'base64');
-    return { buffer, contentType: 'image/svg+xml' };
+    const contentType = match[1];
+    const extension =
+      contentType === 'image/svg+xml'
+        ? 'svg'
+        : contentType === 'image/jpeg' || contentType === 'image/jpg'
+          ? 'jpg'
+          : 'png';
+    return {
+      buffer: Buffer.from(match[2], 'base64'),
+      contentType,
+      extension,
+    };
   }
 
   async resolve(

@@ -125,7 +125,12 @@ async function generate() {
 function download(row: any) {
   const link = document.createElement('a');
   link.href = row.imageUrl;
-  link.download = `qrcode-${row.id}.svg`;
+  const extension = row.imageUrl.startsWith('data:image/svg+xml')
+    ? 'svg'
+    : row.imageUrl.startsWith('data:image/jpeg')
+      ? 'jpg'
+      : 'png';
+  link.download = `qrcode-${row.id}.${extension}`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
