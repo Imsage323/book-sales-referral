@@ -170,10 +170,12 @@ export class OrdersService {
   async updateAddress(id: string, dto: OrderAddressDto): Promise<OrderAddress> {
     const { order } = await this.findOne(id);
     if (
-      order.status !== OrderStatus.PENDING_PAYMENT &&
       order.status !== OrderStatus.PAID &&
       order.status !== OrderStatus.ADDRESS_PENDING
     ) {
+      if (order.status === OrderStatus.PENDING_PAYMENT) {
+        throw new BadRequestException('支付结果尚未确认，请返回支付页重新确认');
+      }
       throw new BadRequestException('当前订单状态不能填写地址');
     }
 
@@ -186,10 +188,7 @@ export class OrdersService {
 
     const saved = await this.addressRepo.save(address);
 
-    if (
-      order.status === OrderStatus.PAID ||
-      order.status === OrderStatus.PENDING_PAYMENT
-    ) {
+    if (order.status === OrderStatus.PAID) {
       order.status = OrderStatus.ADDRESS_PENDING;
       await this.orderRepo.save(order);
     }
@@ -266,7 +265,10 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+    if (this.isPaymentConfirmed(order)) {
+      return order;
+    }
+    if (!this.canConfirmPayment(order.status)) {
       return order;
     }
 
@@ -305,8 +307,11 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('订单不存在');
     }
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      return; // 已支付/已关闭等状态直接幂等返回
+    if (this.isPaymentConfirmed(order)) {
+      return; // 已确认支付，幂等返回且不重复写支付事件
+    }
+    if (!this.canConfirmPayment(order.status)) {
+      return; // 已关闭/退款等状态不在这里隐式改写
     }
     if (plaintext.trade_state !== 'SUCCESS') {
       return; // 非成功状态不落库
@@ -334,7 +339,14 @@ export class OrdersService {
     transactionId: string,
     rawBody: string,
   ): Promise<Order> {
-    order.status = OrderStatus.PAID;
+    if (this.isPaymentConfirmed(order)) {
+      return order;
+    }
+
+    // 地址可能在旧版本竞态中先于迟到回调落库；确认支付时保留后续业务状态。
+    if (order.status === OrderStatus.PENDING_PAYMENT) {
+      order.status = OrderStatus.PAID;
+    }
     order.paidAt = new Date();
     order.wxTransactionId = transactionId;
     await this.orderRepo.save(order);
@@ -349,6 +361,18 @@ export class OrdersService {
     await this.paymentEventRepo.save(paymentEvent);
 
     return order;
+  }
+
+  private isPaymentConfirmed(order: Order): boolean {
+    return Boolean(order.paidAt && order.wxTransactionId);
+  }
+
+  private canConfirmPayment(status: OrderStatus): boolean {
+    return [
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.PAID,
+      OrderStatus.ADDRESS_PENDING,
+    ].includes(status);
   }
 
   private buildDateRange(

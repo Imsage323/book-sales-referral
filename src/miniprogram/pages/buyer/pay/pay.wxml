@@ -25,10 +25,16 @@
       </view>
     </view>
 
-    <view class="hint">支付成功后请继续填写收货地址</view>
+    <view wx:if="{{paymentConfirmed}}" class="hint">支付已确认，请继续填写收货地址</view>
+    <view wx:elif="{{paymentSubmitted}}" class="hint">微信已返回支付成功，正在等待后台确认，请勿再次支付</view>
+    <view wx:else class="hint">支付成功后请继续填写收货地址</view>
 
-    <button class="pay-btn" bindtap="onPay" loading="{{paying}}" disabled="{{paying}}">立即支付</button>
-    <button class="cancel-btn" bindtap="onCancel" disabled="{{paying}}">暂不支付</button>
+    <button class="pay-btn" bindtap="onPay" loading="{{paying}}" disabled="{{paying}}">
+      {{paymentConfirmed ? '继续填写地址' : paymentSubmitted ? '重新确认支付结果' : '立即支付'}}
+    </button>
+    <button class="cancel-btn" bindtap="onCancel" disabled="{{paying}}">
+      {{paymentSubmitted && !paymentConfirmed ? '稍后处理' : '暂不支付'}}
+    </button>
   </view>
 
   <view wx:else class="state-tip">未找到订单</view>

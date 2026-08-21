@@ -168,4 +168,34 @@ describe('OrdersController (e2e)', () => {
       .set('Authorization', `Bearer ${buyerToken}`)
       .expect(400);
   });
+
+  it('should reject address submission before payment is confirmed', async () => {
+    const createRes = await createBuyerOrder(app, buyerToken, {
+      productId,
+      sellerId,
+    });
+    const id = createRes.body.id;
+
+    const res = await request(app.getHttpServer())
+      .patch(`/api/buyer/orders/${id}/address`)
+      .set('Authorization', `Bearer ${buyerToken}`)
+      .send({
+        recipient: '张三',
+        phone: '13800138000',
+        province: '北京',
+        city: '北京市',
+        district: '朝阳区',
+        address: '测试地址',
+      })
+      .expect(400);
+
+    expect(res.body.message).toContain('支付结果尚未确认');
+
+    const orderRes = await request(app.getHttpServer())
+      .get(`/api/orders/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(orderRes.body.order.status).toBe('pending_payment');
+    expect(orderRes.body.address).toBeNull();
+  });
 });

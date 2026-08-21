@@ -258,12 +258,140 @@ describe('OrdersService', () => {
     expect(wxPayService.queryByOutTradeNo).toHaveBeenCalledWith(order.orderNo);
   });
 
+  it('should preserve address_pending when late payment sync confirms payment', async () => {
+    process.env.WX_PAY_MODE = 'real';
+    process.env.WX_APPID = 'wx-appid';
+    process.env.WX_MCHID = 'mchid';
+    process.env.WX_PAY_SERIAL_NO = 'serial';
+    process.env.WX_PAY_APIV3_KEY = 'a'.repeat(32);
+    process.env.WX_PAY_PRIVATE_KEY = 'pem';
+    process.env.WX_PAY_PUBLIC_KEY_ID = 'pub-key-id';
+    process.env.WX_PAY_PUBLIC_KEY = 'pem';
+    process.env.WX_PAY_NOTIFY_URL = 'https://example.com/api/wx/notify';
+
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.ADDRESS_PENDING,
+      totalAmount: 200,
+      paidAt: undefined,
+      wxTransactionId: undefined,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save').mockImplementation(async (o: any) => o);
+    jest
+      .spyOn(paymentEventRepo, 'create')
+      .mockImplementation((dto: any) => dto as PaymentEvent);
+    jest
+      .spyOn(paymentEventRepo, 'save')
+      .mockImplementation(async (dto: any) => dto);
+    wxPayService.queryByOutTradeNo.mockResolvedValue({
+      out_trade_no: order.orderNo,
+      transaction_id: 'wx-tx-late-sync',
+      trade_state: 'SUCCESS',
+      amount: { total: 200 },
+    });
+
+    const result = await service.syncPayment('order-id');
+
+    expect(result.status).toBe(OrderStatus.ADDRESS_PENDING);
+    expect(result.paidAt).toBeInstanceOf(Date);
+    expect(result.wxTransactionId).toBe('wx-tx-late-sync');
+    expect(paymentEventRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('should preserve address_pending when a late payment callback arrives', async () => {
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.ADDRESS_PENDING,
+      totalAmount: 200,
+      paidAt: undefined,
+      wxTransactionId: undefined,
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save').mockImplementation(async (o: any) => o);
+    jest
+      .spyOn(paymentEventRepo, 'create')
+      .mockImplementation((dto: any) => dto as PaymentEvent);
+    jest
+      .spyOn(paymentEventRepo, 'save')
+      .mockImplementation(async (dto: any) => dto);
+
+    await service.handleWxNotify(
+      {
+        out_trade_no: order.orderNo,
+        transaction_id: 'wx-tx-late-notify',
+        trade_state: 'SUCCESS',
+        amount: { total: 200 },
+      },
+      '{"type":"late_notify"}',
+    );
+
+    expect(order.status).toBe(OrderStatus.ADDRESS_PENDING);
+    expect(order.paidAt).toBeInstanceOf(Date);
+    expect(order.wxTransactionId).toBe('wx-tx-late-notify');
+    expect(paymentEventRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not write a duplicate payment event for an already confirmed order', async () => {
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PAID,
+      totalAmount: 200,
+      paidAt: new Date(),
+      wxTransactionId: 'wx-tx-existing',
+    } as Order;
+
+    jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    jest.spyOn(orderRepo, 'save');
+    jest.spyOn(paymentEventRepo, 'save');
+
+    await service.handleWxNotify(
+      {
+        out_trade_no: order.orderNo,
+        transaction_id: 'wx-tx-existing',
+        trade_state: 'SUCCESS',
+        amount: { total: 200 },
+      },
+      '{"type":"duplicate_notify"}',
+    );
+
+    expect(orderRepo.save).not.toHaveBeenCalled();
+    expect(paymentEventRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('should reject address submission while payment is unconfirmed', async () => {
+    const order = {
+      id: 'order-id',
+      orderNo: 'O-20260706-1234',
+      status: OrderStatus.PENDING_PAYMENT,
+    } as Order;
+    jest.spyOn(service, 'findOne').mockResolvedValue({ order, address: null });
+
+    await expect(
+      service.updateAddress('order-id', {
+        recipient: '张三',
+        phone: '13800138000',
+        province: '北京',
+        city: '北京市',
+        district: '朝阳区',
+        address: '测试地址',
+      }),
+    ).rejects.toThrow('支付结果尚未确认');
+  });
+
   it('should find buyer order by orderNo (微信订单中心入口)', async () => {
     const order = {
       id: '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
       orderNo: 'O-20260812-0001',
     } as Order;
-    const findOneSpy = jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    const findOneSpy = jest
+      .spyOn(orderRepo, 'findOne')
+      .mockResolvedValue(order);
     jest.spyOn(service, 'findOne').mockResolvedValue({ order, address: null });
 
     const result = await service.findOneForBuyer('O-20260812-0001', 'openid-1');
@@ -279,7 +407,9 @@ describe('OrdersService', () => {
       id: '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd',
       orderNo: 'O-20260812-0001',
     } as Order;
-    const findOneSpy = jest.spyOn(orderRepo, 'findOne').mockResolvedValue(order);
+    const findOneSpy = jest
+      .spyOn(orderRepo, 'findOne')
+      .mockResolvedValue(order);
     jest.spyOn(service, 'findOne').mockResolvedValue({ order, address: null });
 
     await service.findOneForBuyer(

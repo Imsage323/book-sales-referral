@@ -2,3 +2,8 @@ node_modules/
 *.js
 *.js.map
 project.private.config.json
+
+# 微信开发者工具实际上传的是编译后的 JavaScript；仅跟踪当前已注册的家长端运行文件。
+!app.js
+!pages/buyer/**/*.js
+!utils/**/*.js

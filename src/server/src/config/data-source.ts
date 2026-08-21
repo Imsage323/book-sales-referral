@@ -10,5 +10,6 @@ export default new DataSource({
   password: config.password,
   database: config.database,
   entities: config.entities,
-  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  // 只加载数字时间戳开头的正式迁移，避免 *.spec.ts 被 CLI 当作迁移执行。
+  migrations: [__dirname + '/../migrations/[0-9]*{.ts,.js}'],
 });
