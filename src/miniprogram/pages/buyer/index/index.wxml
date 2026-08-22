@@ -1,4 +1,11 @@
 <view class="page">
+  <view class="shortcut-row">
+    <view class="order-shortcut" bindtap="onMyOrders">
+      <text>我的订单</text>
+      <text class="shortcut-arrow">›</text>
+    </view>
+  </view>
+
   <view wx:if="{{loading}}" class="state-tip">加载中...</view>
 
   <block wx:elif="{{product}}">
@@ -6,8 +13,8 @@
 
     <view class="card head-card">
       <view class="source-line">
-        <text class="source-badge">{{isDirect ? '企业直营' : '销售专属'}}</text>
-        <text class="source-name">由 {{seller.name}} 提供服务</text>
+        <text class="source-badge">官方直营</text>
+        <text class="source-name">由耘梦优学启航提供服务</text>
       </view>
       <view class="price-line">
         <text class="price-symbol">¥</text>
