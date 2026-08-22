@@ -85,6 +85,12 @@ describe('SettlementController (e2e)', () => {
     expect(estimatedRecords.body.items).toHaveLength(2);
     expect(
       estimatedRecords.body.items.every(
+        (record: { orderNo: string }) =>
+          record.orderNo === orderRes.body.orderNo,
+      ),
+    ).toBe(true);
+    expect(
+      estimatedRecords.body.items.every(
         (record: { status: string }) => record.status === 'estimated',
       ),
     ).toBe(true);

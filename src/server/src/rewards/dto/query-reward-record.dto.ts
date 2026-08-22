@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { RewardType, RewardStatus } from '../entities/reward-record.entity';
 
 export class QueryRewardRecordDto {
@@ -16,10 +16,12 @@ export class QueryRewardRecordDto {
   beneficiaryId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(RewardType)
   rewardType?: RewardType;
 
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(RewardStatus)
   status?: RewardStatus;
 

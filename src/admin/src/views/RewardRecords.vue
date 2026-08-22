@@ -173,9 +173,25 @@ const statusOptions = [
 async function loadData() {
   loading.value = true;
   try {
-    const { data } = await api.get('/rewards/records', { params: query });
+    const params: {
+      page: number;
+      pageSize: number;
+      rewardType?: string;
+      status?: string;
+      sellerId?: string;
+    } = {
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+    if (query.rewardType) params.rewardType = query.rewardType;
+    if (query.status) params.status = query.status;
+    if (query.sellerId) params.sellerId = query.sellerId;
+
+    const { data } = await api.get('/rewards/records', { params });
     tableData.value = data.items;
     total.value = data.total;
+  } catch {
+    ElMessage.error('返点记录加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }

@@ -152,9 +152,21 @@ const ruleTypeOptions = [
 async function loadData() {
   loading.value = true;
   try {
-    const { data } = await api.get('/rewards/rules', { params: query });
+    const params: {
+      page: number;
+      pageSize: number;
+      ruleType?: string;
+    } = {
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+    if (query.ruleType) params.ruleType = query.ruleType;
+
+    const { data } = await api.get('/rewards/rules', { params });
     tableData.value = data.items;
     total.value = data.total;
+  } catch {
+    ElMessage.error('返点规则加载失败，请稍后重试');
   } finally {
     loading.value = false;
   }

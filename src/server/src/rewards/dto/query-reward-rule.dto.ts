@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsBoolean, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { RewardRuleType } from '../entities/reward-rule.entity';
 
 export class QueryRewardRuleDto {
@@ -12,6 +12,7 @@ export class QueryRewardRuleDto {
   sellerId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(RewardRuleType)
   ruleType?: RewardRuleType;
 

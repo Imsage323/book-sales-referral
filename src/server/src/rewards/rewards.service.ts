@@ -22,6 +22,10 @@ export interface RewardCalculationResult {
   referralReward?: RewardRecord;
 }
 
+export type RewardRecordListItem = RewardRecord & {
+  orderNo?: string;
+};
+
 interface RewardSummaryGroup {
   count: number;
   totalAmount: number;
@@ -42,6 +46,8 @@ export class RewardsService {
     private readonly ruleRepo: Repository<RewardRule>,
     @InjectRepository(RewardRecord)
     private readonly recordRepo: Repository<RewardRecord>,
+    @InjectRepository(Order)
+    private readonly orderRepo: Repository<Order>,
   ) {}
 
   async createRule(dto: CreateRewardRuleDto): Promise<RewardRule> {
@@ -201,7 +207,7 @@ export class RewardsService {
 
   async findAllRecords(
     query: QueryRewardRecordDto,
-  ): Promise<{ items: RewardRecord[]; total: number }> {
+  ): Promise<{ items: RewardRecordListItem[]; total: number }> {
     const {
       orderId,
       sellerId,
@@ -225,7 +231,23 @@ export class RewardsService {
       take: pageSize,
     });
 
-    return { items, total };
+    if (items.length === 0) return { items, total };
+
+    const orders = await this.orderRepo.find({
+      where: { id: In([...new Set(items.map((item) => item.orderId))]) },
+      select: { id: true, orderNo: true },
+    });
+    const orderNoById = new Map(
+      orders.map((order) => [order.id, order.orderNo]),
+    );
+
+    return {
+      items: items.map((item) => ({
+        ...item,
+        orderNo: orderNoById.get(item.orderId),
+      })),
+      total,
+    };
   }
 
   async getRecordsSummary(sellerId: string): Promise<RewardRecordsSummary> {

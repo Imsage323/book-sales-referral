@@ -53,6 +53,16 @@ describe('RewardRecordsController (e2e)', () => {
     }
   });
 
+  it('should treat empty optional filters as unselected', async () => {
+    const recordsRes = await request(app.getHttpServer())
+      .get('/api/rewards/records?rewardType=&status=&sellerId=&page=1&pageSize=10')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(recordsRes.body.items).toBeDefined();
+    expect(recordsRes.body.total).toBeGreaterThanOrEqual(0);
+  });
+
   it('should return a seller reward summary', async () => {
     const sellersRes = await request(app.getHttpServer())
       .get('/api/sellers?pageSize=1')

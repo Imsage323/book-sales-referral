@@ -61,4 +61,14 @@ describe('RewardRulesController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
   });
+
+  it('should treat an empty rule type as unselected', async () => {
+    const listRes = await request(app.getHttpServer())
+      .get('/api/rewards/rules?ruleType=&page=1&pageSize=10')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(listRes.body.items).toBeDefined();
+    expect(listRes.body.total).toBeGreaterThanOrEqual(0);
+  });
 });

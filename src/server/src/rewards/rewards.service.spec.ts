@@ -16,6 +16,7 @@ describe('RewardsService', () => {
   let service: RewardsService;
   let ruleRepo: Repository<RewardRule>;
   let recordRepo: Repository<RewardRecord>;
+  let orderRepo: Repository<Order>;
   const originalReferralEnabled = process.env.REFERRAL_REWARD_ENABLED;
   const originalReferralAmount = process.env.REFERRAL_REWARD_CENTS_PER_BOOK;
 
@@ -31,6 +32,10 @@ describe('RewardsService', () => {
           provide: getRepositoryToken(RewardRecord),
           useClass: Repository,
         },
+        {
+          provide: getRepositoryToken(Order),
+          useClass: Repository,
+        },
       ],
     }).compile();
 
@@ -41,6 +46,7 @@ describe('RewardsService', () => {
     recordRepo = module.get<Repository<RewardRecord>>(
       getRepositoryToken(RewardRecord),
     );
+    orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
   });
 
   afterEach(() => {
@@ -285,6 +291,34 @@ describe('RewardsService', () => {
         seller: { count: 5, totalAmount: 900 },
         referral: { count: 1, totalAmount: 50 },
       },
+    });
+  });
+
+  it('should include the merchant order number in reward record lists', async () => {
+    jest.spyOn(recordRepo, 'findAndCount').mockResolvedValue([
+      [
+        {
+          id: 'record-1',
+          orderId: 'order-1',
+          rewardType: RewardType.SELLER,
+          status: RewardStatus.ESTIMATED,
+          amount: 3,
+        } as RewardRecord,
+      ],
+      1,
+    ]);
+    jest.spyOn(orderRepo, 'find').mockResolvedValue([
+      { id: 'order-1', orderNo: 'O-20260822-0001' } as Order,
+    ]);
+
+    await expect(service.findAllRecords({})).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          id: 'record-1',
+          orderNo: 'O-20260822-0001',
+        },
+      ],
     });
   });
 });
