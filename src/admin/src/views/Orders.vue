@@ -55,6 +55,12 @@
           <el-button type="primary" text @click="openDetail(row)">详情</el-button>
           <el-button type="primary" text @click="openStatusDialog(row)">改状态</el-button>
           <el-button type="success" text @click="openShipDialog(row)">发货</el-button>
+          <el-button
+            v-if="!['pending_payment', 'refunded', 'cancelled', 'closed'].includes(row.status)"
+            type="danger"
+            text
+            @click="openRefundDialog(row)"
+          >退款</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -118,6 +124,67 @@
           </el-table-column>
         </el-table>
       </div>
+      <div v-if="currentRefunds.length > 0" class="refund-section">
+        <h4>退款记录</h4>
+        <el-table :data="currentRefunds" size="small">
+          <el-table-column label="金额" width="90">
+            <template #default="{ row }">{{ (row.amount / 100).toFixed(2) }} 元</template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="REFUND_TAG[row.status] || 'info'" size="small">
+                {{ REFUND_TEXT[row.status] || row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" label="原因" show-overflow-tooltip />
+          <el-table-column prop="operator" label="操作人" width="90" />
+          <el-table-column prop="createdAt" label="发起时间" width="160" />
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.status === 'processing'"
+                size="small"
+                type="primary"
+                link
+                @click="syncRefund(row)"
+              >同步状态</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="refundVisible" title="发起退款" width="440px">
+      <el-alert
+        type="warning"
+        :closable="false"
+        title="全额退款成功后，该订单未结算的返点将自动作废；已结算的生成负向冲销记录。"
+        style="margin-bottom: 12px"
+      />
+      <el-form :model="refundForm" label-width="100px">
+        <el-form-item label="退款金额">
+          <el-input-number
+            v-model="refundForm.amountYuan"
+            :min="0.01"
+            :precision="2"
+            :max="refundForm.maxYuan"
+            style="width: 160px"
+          />
+          <span class="refund-hint">元（可退上限 {{ refundForm.maxYuan.toFixed(2) }} 元，默认全额）</span>
+        </el-form-item>
+        <el-form-item label="退款原因">
+          <el-input
+            v-model="refundForm.reason"
+            type="textarea"
+            placeholder="必填，将同步给微信支付"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="refundVisible = false">取消</el-button>
+        <el-button type="danger" :loading="refundSubmitting" @click="submitRefund">确认退款</el-button>
+      </template>
     </el-dialog>
 
     <el-dialog v-model="statusVisible" title="更新状态" width="400px">
@@ -187,15 +254,32 @@ const total = ref(0);
 const detailVisible = ref(false);
 const statusVisible = ref(false);
 const shipVisible = ref(false);
+const refundVisible = ref(false);
+const refundSubmitting = ref(false);
 
 const currentOrder = ref<any>(null);
 const currentAddress = ref<any>(null);
 const currentShipments = ref<any[]>([]);
+const currentRefunds = ref<any[]>([]);
 
 const query = reactive({ keyword: '', status: '', sellerId: '', page: 1, pageSize: 10 });
 const statusForm = reactive({ status: '', remark: '' });
 const shipForm = reactive({ company: '', companyId: '', trackingNo: '' });
+const refundForm = reactive({ amountYuan: 0, maxYuan: 0, reason: '' });
 const expressCompanies = ref<any[]>([]);
+
+const REFUND_TEXT: Record<string, string> = {
+  processing: '处理中',
+  success: '退款成功',
+  abnormal: '退款异常',
+  closed: '退款关闭',
+};
+const REFUND_TAG: Record<string, string> = {
+  processing: 'warning',
+  success: 'success',
+  abnormal: 'danger',
+  closed: 'info',
+};
 
 const WX_SYNC_TEXT: Record<string, string> = {
   success: '已同步',
@@ -265,6 +349,8 @@ async function openDetail(row: any) {
     currentAddress.value = data.address;
     const shipRes = await api.get('/shipments', { params: { orderId: row.id } });
     currentShipments.value = shipRes.data.items;
+    const refundRes = await api.get(`/orders/${row.id}/refunds`);
+    currentRefunds.value = refundRes.data;
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || '加载详情失败');
   }
@@ -341,6 +427,59 @@ async function retryWxSync(row: any) {
   }
 }
 
+async function openRefundDialog(row: any) {
+  currentOrder.value = row;
+  refundForm.reason = '';
+  let refunded = 0;
+  try {
+    const { data } = await api.get(`/orders/${row.id}/refunds`);
+    refunded = data
+      .filter((item: any) => ['processing', 'success'].includes(item.status))
+      .reduce((sum: number, item: any) => sum + item.amount, 0);
+  } catch {
+    // 读取失败时按未退款计算，提交时后端会再校验
+  }
+  const remaining = Math.max(row.totalAmount - refunded, 0);
+  refundForm.maxYuan = remaining / 100;
+  refundForm.amountYuan = remaining / 100;
+  refundVisible.value = true;
+}
+
+async function submitRefund() {
+  if (!refundForm.reason.trim()) {
+    ElMessage.warning('请填写退款原因');
+    return;
+  }
+  refundSubmitting.value = true;
+  try {
+    await api.post(`/orders/${currentOrder.value.id}/refund`, {
+      amount: Math.round(refundForm.amountYuan * 100),
+      reason: refundForm.reason.trim(),
+    });
+    ElMessage.success('退款已发起');
+    refundVisible.value = false;
+    loadData();
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '退款发起失败');
+  } finally {
+    refundSubmitting.value = false;
+  }
+}
+
+async function syncRefund(row: any) {
+  try {
+    const { data } = await api.post(`/orders/refunds/${row.id}/sync`);
+    ElMessage.success(`退款状态已同步：${REFUND_TEXT[data.status] || data.status}`);
+    if (currentOrder.value) {
+      const refundRes = await api.get(`/orders/${currentOrder.value.id}/refunds`);
+      currentRefunds.value = refundRes.data;
+    }
+    loadData();
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '退款状态同步失败');
+  }
+}
+
 onMounted(() => {
   loadData();
   loadSellers();
@@ -349,12 +488,19 @@ onMounted(() => {
 
 <style scoped>
 .address-section,
-.shipment-section {
+.shipment-section,
+.refund-section {
   margin-top: 20px;
 }
 .address-section h4,
-.shipment-section h4 {
+.shipment-section h4,
+.refund-section h4 {
   margin-bottom: 10px;
+}
+.refund-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 .wx-sync-error-hint {
   display: inline-block;

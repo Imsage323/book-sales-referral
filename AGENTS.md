@@ -69,7 +69,7 @@ demo 冒烟测试：`demo/smoke-test.cjs`（Playwright，需先本地静态服�
 - `sellers`：销售方 CRUD 与上下级推荐关系（`sellers.parentId`）；`seller-code.generator.ts` 生成销售方编码。
 - `products`：产品配置（一期默认一本书）。
 - `qrcodes` + `scan-logs`：小程序码生成（携带 `seller_code` + `product_id`）、下载、生成历史、扫码日志；公开接口 `GET /api/qrcodes/:id/resolve`、`GET /api/products/:id/public`。
-- `orders`：订单（订单号格式 `O-YYYYMMDD-XXXX`）、地址、发货（`shipments`）、退款记录、支付事件（`payment_events`）。状态流转含 `pending_payment → paid → aftersale_waiting → settlement_ready`。
+- `orders`：订单（订单号格式 `O-YYYYMMDD-XXXX`）、地址、发货（`shipments`）、退款、支付事件（`payment_events`）。状态流转含 `pending_payment → paid → aftersale_waiting → settlement_ready → refunded`。`refunds.service.ts` 提供管理端退款：`POST /api/orders/:id/refund`（缺省全额，商户退款单号 `订单号-R{N}`）、`GET /api/orders/:id/refunds`、`POST /api/orders/refunds/:refundId/sync`（同步微信退款状态）；累计退满后订单置 `refunded` 并冲销返点（未结算记录置 `void`，已结算的追加等额负向 `reversed` 记录）；mock/未启用真实支付时退款直接成功。
 - `payments`：微信支付与微信登录。`wx-pay.service.ts` 用官方 `wechatpay-axios-plugin`（APIv3，微信支付公钥验签模式）做 JSAPI 下单、`wx.requestPayment` 参数二次签名、回调验签+AES-256-GCM 解密、按商户订单号主动查询；`wx-login.service.ts` 用 `jscode2session` 换 openid（未配置 AppID/Secret 时返回占位 openid）；`wx.controller.ts` 暴露公开接口 `POST /api/wx/login` 与 `POST /api/wx/notify`。`main.ts` 已开启 `rawBody` 供回调验签。
 - `rewards`：返点规则匹配优先级「产品+销售方 → 产品 → 销售方 → 默认规则」，返点记录与一层直接推荐奖励；`settlement.service.ts` 每日凌晨 2 点定时结算（`@nestjs/schedule`），支持手动触发。
 - `wx-trade`：微信交易管理（发货信息管理服务 + 订单中心）。`wx-trade.service.ts` 封装微信服务端 API（Node https），鉴权优先读云托管容器免维护 token 文件 `/.tencentcloudbase/wx/cloudbase_access_token`，否则用 `cgi-bin/stable_token`；`WX_TRADE_MODE=real/mock/disabled` 控制运行模式（mock 仅限 development/test，disabled 跳过同步不阻断发货）。管理接口：`GET /api/wx-trade/status`（开通诊断）、`GET /api/wx-trade/express-companies`（运力编码表缓存 1h）、`POST /api/wx-trade/order-detail-path`（配置订单中心跳转 path）。

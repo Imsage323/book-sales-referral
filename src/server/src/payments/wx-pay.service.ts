@@ -139,6 +139,41 @@ export class WxPayService {
     return data;
   }
 
+  /** 发起退款，返回微信退款单号与状态（SUCCESS/PROCESSING/CLOSED/ABNORMAL） */
+  async createRefund(input: {
+    outTradeNo: string;
+    outRefundNo: string;
+    refundAmount: number;
+    totalAmount: number;
+    reason?: string;
+  }): Promise<{ refundId: string; status: string }> {
+    const { data } = await this.getClient().v3.refund.domestic.refunds.post<any>({
+      out_trade_no: input.outTradeNo,
+      out_refund_no: input.outRefundNo,
+      reason: input.reason,
+      amount: {
+        refund: input.refundAmount,
+        total: input.totalAmount,
+        currency: 'CNY',
+      },
+    });
+    return {
+      refundId: data?.refund_id ?? '',
+      status: data?.status ?? 'PROCESSING',
+    };
+  }
+
+  /** 按商户退款单号查询退款状态 */
+  async queryRefund(outRefundNo: string): Promise<{ refundId: string; status: string }> {
+    const { data } = await this.getClient().v3.refund.domestic.refunds._out_refund_no_.get<any>({
+      out_refund_no: outRefundNo,
+    });
+    return {
+      refundId: data?.refund_id ?? '',
+      status: data?.status ?? 'PROCESSING',
+    };
+  }
+
   /** 回调金额（分）必须与订单金额一致才允许落库 */
   static isAmountMatched(notifyTotal: number | undefined, orderTotal: number): boolean {
     return typeof notifyTotal === 'number' && notifyTotal === orderTotal;

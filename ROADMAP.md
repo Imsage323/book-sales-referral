@@ -185,7 +185,7 @@ Phase 5 Task 2 未修改真实 `src/server/.env`；2026-08-07 经用户确认补
 - [x] 接入真实微信小程序码并完成真机归因验证（2026-08-22；测试码进入并生成订单 `O-20260822-1803`，生产订单归属测试下线 `SF7D4NP`，1 本/0.10 元真实支付确认）
 - [x] 修复管理后台返点规则/记录空筛选查询并补充订单号展示（提交 `8a3e0f6`；前端不再发送空枚举参数，后端兼容空可选筛选，加载失败明确提示；admin build、server build、72/72 单元测试、46/46 E2E 通过，`server-037` 上线后后台无筛选可正常显示 `O-20260822-1803` 两条记录）
 - [ ] 接入微信订单发货管理：本地模块、同步状态、管理后台重试和诊断接口已实现，但 2026-08-21 按微信当前官方接口逐字段复核发现 `order_number_type` 与订单字段组合、`upload_time` 格式不符；线上 `WX_TRADE_MODE=disabled`，尚未发生错误上传。需修复并自动验证后再部署、启用和完成真实发货；在此之前首发只能使用微信后台手工录入发货信息
-- [ ] 实现微信退款、退款状态同步和返点冲销最低闭环
+- [x] 实现微信退款、退款状态同步和返点冲销最低闭环（2026-08-29：管理端 `POST /api/orders/:id/refund` 发起退款（缺省全额，支持部分退款）、`POST /api/orders/refunds/:refundId/sync` 同步微信退款状态；累计退满后订单置 `refunded` 并冲销返点——未结算记录置 `void`、已结算追加负向 `reversed` 记录；微信退款回调通知未接入，处理中状态靠手动同步；真实链路待线上验收）
 - [ ] 移除生产占位售价、奖励和业务参数
 - [ ] 以脱敏方式复核当前发布候选全部微信支付配置、通知地址和证书有效性
 
@@ -300,7 +300,8 @@ Phase 5 Task 2 未修改真实 `src/server/.env`；2026-08-07 经用户确认补
 
 ## 最近更新
 
-- 2026-08-29：推荐奖励规则调整——上级为顶级直营（`DEFAULT_SELLER_CODE` 对应的销售方，线上即企业直营 `SMFMSVV`）时**不生成推荐奖励**；其他上级照常。实现：`rewards.service.ts` `calculateRewards` 注入 `sellerRepo`，生成推荐记录前查上级 sellerCode 比对；未配置 `DEFAULT_SELLER_CODE` 时保持原行为。新增单测覆盖跳过场景，75/75 单元测试、46/46 E2E、server build 通过
+- 2026-08-29：微信退款最低闭环完成——`refund_records` 表扩展 `outRefundNo`（商户退款单号 `订单号-R{N}`，唯一）/`status`（processing/success/abnormal/closed）/`wxRefundId`（迁移 `AddRefundWxFields1787995200000`）；`WxPayService` 新增 `createRefund`/`queryRefund`（APIv3 退款下单与查询）；新增 `RefundsService`：管理端 `POST /api/orders/:id/refund`（缺省全额，支持部分退款，超额/未支付/已退款均 400）、`GET /api/orders/:id/refunds`、`POST /api/orders/refunds/:refundId/sync`（处理中状态手动同步微信侧）；累计退满后订单置 `refunded` 并冲销返点（ESTIMATED/READY/PENDING → `void` 作废，PROCESSED → 追加等额负向 `reversed` 记录，事务+行锁幂等）；mock/未启用真实支付时退款直接成功。管理后台订单列表新增「退款」按钮与退款弹窗（金额默认剩余全额、原因必填、冲销提示），订单详情新增退款记录区（状态标签 + 处理中可手动同步）。server build、80/80 单元测试（新增 refunds 5 例）、50/50 E2E（新增 refunds 4 例）、admin build 全部通过。**注意：微信退款回调通知未接入（处理中状态靠手动同步）；真实微信退款链路需线上验收；部分退款不冲销返点（退满才冲）**
+- 2026-08-29：推荐奖励规则调整——上级为顶级直营（`DEFAULT_SELLER_CODE` 对应的销售方，线上即企业直营 `SMFMSVV`）时**不生成推荐奖励**；其他上级照常。实现：`rewards.service.ts` `calculateRewards` 注入 `sellerRepo`，生成推荐记录前查上级 sellerCode 比对；未配置 `DEFAULT_SELLER_CODE` 时保持原行为。新增单测覆盖跳过场景，75/75 单元测试、46/46 E2E、server build 通过；已提交 `90d1858` 并推送，自动部署 `server-042` normal、流量 100%
 - 2026-08-29：付款后返点预估改为全量销售方生效——`REWARD_ESTIMATE_ON_PAID_ENABLED=true` 即对所有销售方在付款确认后生成 `ESTIMATED` 记录（后台显示「预估」，命名口径：预估返点/待结算，供截图激励销售方）；`REWARD_ESTIMATE_SELLER_ID` 降为可选的单销售方限制（仅测试用，缺省不限制）。改动：`reward.config.ts`（enabled 不再要求 sellerId）、`settlement.service.ts`（仅在 sellerId 有效时过滤）、`reward.config.spec.ts` 重写。已提交 `d31b938` 并推送，自动部署 `server-040` normal、流量 100%，线上 diag 正常。**部署后必做：云托管环境变量删除 `REWARD_ESTIMATE_SELLER_ID`，否则全量预估不生效**。server build、74/74 单元测试、46/46 E2E 通过（本地 MariaDB 3306 InnoDB 损坏依旧，E2E 用 %TEMP% 下 3307 隔离实例 + 手动播种 admin 后通过）。另发现线上 `GET /api/products/storefront` 返回 503「默认销售方不可用」，根因：「企业直营」销售方被误删（硬删除，`sellers.service.remove`）；已在后台重建并指定原编码 `SMFMSVV`（新 UUID `2cbf4b65-4547-4a58-baae-67d61cbcdf08`），李引琴上级已重挂，storefront 实测恢复且价格已是 88 元（8800 分）；小程序价格无硬编码、随接口动态显示，后台改价 88 元无需改代码。微信群二维码已裁剪存至 `assets/2027高考陪跑群二维码.jpg`（注意：微信群码 7 天有效，2026-09-05 后失效，长期用需活码方案）
 - 2026-08-24：郑桐确认 8 月计划的销售与分销业务闭环已完成，本阶段转入维护。微信发货管理真实接口、退款客服、正式售价和分销合规仍作运维期补验。
 - 2026-08-22：小程序 v0.9.2 上传完成——因工作区仍有多处未提交 WIP（seller 端页面、buyer 部分 ts/wxss、tsconfig sourceMap 等），采用隔离候选方式：从已提交 `2c1d96e` 导出 `src/miniprogram` 全量文件至临时目录，`npm ci` + `tsc` 构建通过，候选不含 sourceMap（与 0.9.1 基线一致）、买家页已含「官方直营」静态文案；通过本机稳定版开发者工具 CLI（`D:\software\微信web开发者工具\cli.bat`，登录态已验证）上传 v0.9.2（261,465 字节），版本描述「买家页服务方展示统一为官方品牌，不再外显销售方名称」。**仅上传为开发版本，提审与发布待用户在 mp 后台手动操作**
