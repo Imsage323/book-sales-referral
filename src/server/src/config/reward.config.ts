@@ -15,7 +15,9 @@ export function getPaidRewardEstimateConfig(): PaidRewardEstimateConfig {
       sellerId,
     );
   return {
-    enabled: process.env.REWARD_ESTIMATE_ON_PAID_ENABLED === 'true' && isUuid,
+    // 付款后预估对全量销售方生效；REWARD_ESTIMATE_SELLER_ID 仅作为可选的
+    // 单销售方限制（测试用），缺省或非法时不限制
+    enabled: process.env.REWARD_ESTIMATE_ON_PAID_ENABLED === 'true',
     sellerId: isUuid ? sellerId : null,
   };
 }

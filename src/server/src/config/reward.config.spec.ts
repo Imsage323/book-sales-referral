@@ -24,17 +24,33 @@ describe('reward config', () => {
     }
   });
 
-  it('keeps paid estimates disabled without a valid target seller', () => {
-    process.env.REWARD_ESTIMATE_ON_PAID_ENABLED = 'true';
-    process.env.REWARD_ESTIMATE_SELLER_ID = 'not-a-uuid';
-
+  it('disables paid estimates when the switch is off', () => {
     expect(getPaidRewardEstimateConfig()).toEqual({
       enabled: false,
       sellerId: null,
     });
   });
 
-  it('enables paid estimates only for an explicit target seller', () => {
+  it('enables paid estimates for all sellers without a target seller', () => {
+    process.env.REWARD_ESTIMATE_ON_PAID_ENABLED = 'true';
+
+    expect(getPaidRewardEstimateConfig()).toEqual({
+      enabled: true,
+      sellerId: null,
+    });
+  });
+
+  it('ignores an invalid target seller and stays unrestricted', () => {
+    process.env.REWARD_ESTIMATE_ON_PAID_ENABLED = 'true';
+    process.env.REWARD_ESTIMATE_SELLER_ID = 'not-a-uuid';
+
+    expect(getPaidRewardEstimateConfig()).toEqual({
+      enabled: true,
+      sellerId: null,
+    });
+  });
+
+  it('optionally restricts paid estimates to an explicit target seller', () => {
     const sellerId = '1c03b880-95fc-4fc2-ae8f-2351ba1f9efd';
     process.env.REWARD_ESTIMATE_ON_PAID_ENABLED = 'true';
     process.env.REWARD_ESTIMATE_SELLER_ID = sellerId;

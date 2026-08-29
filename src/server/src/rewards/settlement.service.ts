@@ -57,7 +57,7 @@ export class SettlementService {
     orderId: string,
   ): Promise<{ estimatedCount: number; skipped: boolean }> {
     const estimateConfig = getPaidRewardEstimateConfig();
-    if (!estimateConfig.enabled || !estimateConfig.sellerId) {
+    if (!estimateConfig.enabled) {
       return { estimatedCount: 0, skipped: true };
     }
 
@@ -70,7 +70,10 @@ export class SettlementService {
       if (!order?.paidAt || !order.wxTransactionId) {
         return { estimatedCount: 0, skipped: true };
       }
-      if (order.sellerId !== estimateConfig.sellerId) {
+      if (
+        estimateConfig.sellerId &&
+        order.sellerId !== estimateConfig.sellerId
+      ) {
         return { estimatedCount: 0, skipped: true };
       }
 
