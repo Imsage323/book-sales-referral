@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { OrderStatus } from '../../orders/entities/order.entity';
 
 export class LedgerExportDto {
@@ -7,6 +8,7 @@ export class LedgerExportDto {
   sellerId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(OrderStatus)
   status?: OrderStatus;
 

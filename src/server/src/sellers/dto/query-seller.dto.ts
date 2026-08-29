@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { SellerStatus } from '../entities/seller.entity';
 
 export class QuerySellerDto {
@@ -8,6 +8,7 @@ export class QuerySellerDto {
   keyword?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(SellerStatus)
   status?: SellerStatus;
 

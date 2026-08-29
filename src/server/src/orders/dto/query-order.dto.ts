@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OrderStatus } from '../entities/order.entity';
 
 export class QueryOrderDto {
@@ -7,7 +7,9 @@ export class QueryOrderDto {
   @IsString()
   keyword?: string;
 
+  // 前端清空筛选时会传空字符串，需归一为 undefined 避免 IsEnum 校验失败
   @IsOptional()
+  @Transform(({ value }) => value || undefined)
   @IsEnum(OrderStatus)
   status?: OrderStatus;
 
