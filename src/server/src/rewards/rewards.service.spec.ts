@@ -17,8 +17,10 @@ describe('RewardsService', () => {
   let ruleRepo: Repository<RewardRule>;
   let recordRepo: Repository<RewardRecord>;
   let orderRepo: Repository<Order>;
+  let sellerRepo: Repository<Seller>;
   const originalReferralEnabled = process.env.REFERRAL_REWARD_ENABLED;
   const originalReferralAmount = process.env.REFERRAL_REWARD_CENTS_PER_BOOK;
+  const originalDirectSellerCode = process.env.DEFAULT_SELLER_CODE;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,6 +38,10 @@ describe('RewardsService', () => {
           provide: getRepositoryToken(Order),
           useClass: Repository,
         },
+        {
+          provide: getRepositoryToken(Seller),
+          useClass: Repository,
+        },
       ],
     }).compile();
 
@@ -47,11 +53,13 @@ describe('RewardsService', () => {
       getRepositoryToken(RewardRecord),
     );
     orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
+    sellerRepo = module.get<Repository<Seller>>(getRepositoryToken(Seller));
   });
 
   afterEach(() => {
     restoreEnv('REFERRAL_REWARD_ENABLED', originalReferralEnabled);
     restoreEnv('REFERRAL_REWARD_CENTS_PER_BOOK', originalReferralAmount);
+    restoreEnv('DEFAULT_SELLER_CODE', originalDirectSellerCode);
   });
 
   it('should calculate fixed per book reward', () => {
@@ -154,6 +162,10 @@ describe('RewardsService', () => {
     jest
       .spyOn(recordRepo, 'create')
       .mockImplementation((dto: any) => dto as RewardRecord);
+    jest.spyOn(sellerRepo, 'findOne').mockResolvedValue({
+      id: 'seller-parent',
+      sellerCode: 'PARENT01',
+    } as Seller);
 
     const records = await service.calculateRewards(order, product, seller);
 
@@ -164,6 +176,49 @@ describe('RewardsService', () => {
     expect(records[1].rewardType).toBe(RewardType.REFERRAL);
     expect(records[1].amount).toBe(1); // 1分/本 × 1
     expect(records[1].beneficiaryId).toBe('seller-parent');
+  });
+
+  it('should skip referral reward when parent is the direct seller', async () => {
+    process.env.REFERRAL_REWARD_ENABLED = 'true';
+    process.env.REFERRAL_REWARD_CENTS_PER_BOOK = '1';
+    process.env.DEFAULT_SELLER_CODE = 'SMFMSVV';
+    const order = {
+      id: 'order-1',
+      productId: 'product-1',
+      sellerId: 'seller-1',
+      quantity: 1,
+      totalAmount: 100,
+    } as Order;
+    const seller = {
+      id: 'seller-1',
+      parentId: 'seller-parent',
+    } as Seller;
+
+    jest.spyOn(ruleRepo, 'createQueryBuilder').mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      orWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    } as any);
+    jest
+      .spyOn(ruleRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRule);
+    jest
+      .spyOn(recordRepo, 'create')
+      .mockImplementation((dto: any) => dto as RewardRecord);
+    jest.spyOn(sellerRepo, 'findOne').mockResolvedValue({
+      id: 'seller-parent',
+      sellerCode: 'SMFMSVV',
+    } as Seller);
+
+    const records = await service.calculateRewards(
+      order,
+      { id: 'product-1' } as Product,
+      seller,
+    );
+
+    expect(records).toHaveLength(1);
+    expect(records[0].rewardType).toBe(RewardType.SELLER);
   });
 
   it('should keep referral rewards disabled by default', async () => {

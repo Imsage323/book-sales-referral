@@ -48,6 +48,8 @@ export class RewardsService {
     private readonly recordRepo: Repository<RewardRecord>,
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
+    @InjectRepository(Seller)
+    private readonly sellerRepo: Repository<Seller>,
   ) {}
 
   async createRule(dto: CreateRewardRuleDto): Promise<RewardRule> {
@@ -182,24 +184,34 @@ export class RewardsService {
       referralConfig.enabled &&
       referralConfig.fixedAmountPerBook > 0
     ) {
-      const referralAmount = order.quantity * referralConfig.fixedAmountPerBook;
-      records.push(
-        this.recordRepo.create({
-          orderId: order.id,
-          productId: order.productId,
-          sellerId: order.sellerId,
-          beneficiaryId: seller.parentId,
-          rewardType: RewardType.REFERRAL,
-          status,
-          amount: referralAmount,
-          ruleSnapshot: {
-            type: 'fixed_per_book',
-            fixedAmount: referralConfig.fixedAmountPerBook,
-          },
-          formula: `${referralConfig.fixedAmountPerBook}分/本 × 数量${order.quantity} = ${referralAmount}分`,
-          calculatedAt: new Date(),
-        }),
-      );
+      // 顶级直营（DEFAULT_SELLER_CODE 对应的销售方，如企业直营）不接收推荐奖励；
+      // 其余上级照常。未配置 DEFAULT_SELLER_CODE 时不做跳过（保持测试环境行为）。
+      const parent = await this.sellerRepo.findOne({
+        where: { id: seller.parentId },
+      });
+      const directSellerCode = (process.env.DEFAULT_SELLER_CODE || '').trim();
+      const parentIsDirectSeller =
+        !!directSellerCode && parent?.sellerCode === directSellerCode;
+      if (parent && !parentIsDirectSeller) {
+        const referralAmount = order.quantity * referralConfig.fixedAmountPerBook;
+        records.push(
+          this.recordRepo.create({
+            orderId: order.id,
+            productId: order.productId,
+            sellerId: order.sellerId,
+            beneficiaryId: seller.parentId,
+            rewardType: RewardType.REFERRAL,
+            status,
+            amount: referralAmount,
+            ruleSnapshot: {
+              type: 'fixed_per_book',
+              fixedAmount: referralConfig.fixedAmountPerBook,
+            },
+            formula: `${referralConfig.fixedAmountPerBook}分/本 × 数量${order.quantity} = ${referralAmount}分`,
+            calculatedAt: new Date(),
+          }),
+        );
+      }
     }
 
     return records;
