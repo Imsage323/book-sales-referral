@@ -38,8 +38,9 @@ export class Seller {
   @Column({ type: 'uuid', nullable: true })
   parentId?: string;
 
+  // JoinColumn 必须指向实际存值的 parentId 列，否则关联查询永远为 null
   @ManyToOne(() => Seller, (seller) => seller.children, { nullable: true })
-  @JoinColumn({ name: 'parent_id' })
+  @JoinColumn({ name: 'parentId' })
   parent?: Seller;
 
   @OneToMany(() => Seller, (seller) => seller.parent)

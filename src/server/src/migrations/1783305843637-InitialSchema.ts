@@ -35,29 +35,17 @@ export class InitialSchema1783305843637 implements MigrationInterface {
       `CREATE TABLE \`reward_rules\` (\`id\` varchar(36) NOT NULL, \`productId\` varchar(255) NULL, \`sellerId\` varchar(255) NULL, \`ruleType\` enum ('fixed_per_book', 'percentage', 'tier') NOT NULL DEFAULT 'percentage', \`baseValue\` int NOT NULL DEFAULT '0', \`threshold\` int NOT NULL DEFAULT '0', \`rate\` int NULL, \`fixedAmount\` int NULL, \`isDefault\` tinyint NOT NULL DEFAULT 0, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
-      `CREATE TABLE \`sellers\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(100) NOT NULL, \`sellerCode\` varchar(50) NOT NULL, \`school\` varchar(100) NULL, \`region\` varchar(100) NULL, \`phone\` varchar(50) NULL, \`parentId\` varchar(255) NULL, \`status\` enum ('active', 'disabled') NOT NULL DEFAULT 'active', \`remark\` text NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`parent_id\` varchar(36) NULL, UNIQUE INDEX \`IDX_0b10ae08586c7678f669c41a9c\` (\`sellerCode\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+      `CREATE TABLE \`sellers\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(100) NOT NULL, \`sellerCode\` varchar(50) NOT NULL, \`school\` varchar(100) NULL, \`region\` varchar(100) NULL, \`phone\` varchar(50) NULL, \`parentId\` varchar(255) NULL, \`status\` enum ('active', 'disabled') NOT NULL DEFAULT 'active', \`remark\` text NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), UNIQUE INDEX \`IDX_0b10ae08586c7678f669c41a9c\` (\`sellerCode\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
-      `CREATE TABLE \`seller_qrcodes\` (\`id\` varchar(36) NOT NULL, \`sellerId\` varchar(255) NOT NULL, \`productId\` varchar(255) NULL, \`imageUrl\` longtext NOT NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`seller_id\` varchar(36) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+      `CREATE TABLE \`seller_qrcodes\` (\`id\` varchar(36) NOT NULL, \`sellerId\` varchar(255) NOT NULL, \`productId\` varchar(255) NULL, \`imageUrl\` longtext NOT NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
       `CREATE TABLE \`scan_logs\` (\`id\` varchar(36) NOT NULL, \`sellerCode\` varchar(50) NOT NULL, \`sellerId\` varchar(255) NULL, \`productId\` varchar(255) NULL, \`openid\` varchar(100) NOT NULL, \`scene\` varchar(100) NULL, \`ip\` varchar(100) NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
     );
-    await queryRunner.query(
-      `ALTER TABLE \`sellers\` ADD CONSTRAINT \`FK_c5dff1e8099a360fa7ef9b8327b\` FOREIGN KEY (\`parent_id\`) REFERENCES \`sellers\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`seller_qrcodes\` ADD CONSTRAINT \`FK_379450dd44d9c955f4761cd9e48\` FOREIGN KEY (\`seller_id\`) REFERENCES \`sellers\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE \`seller_qrcodes\` DROP FOREIGN KEY \`FK_379450dd44d9c955f4761cd9e48\``,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`sellers\` DROP FOREIGN KEY \`FK_c5dff1e8099a360fa7ef9b8327b\``,
-    );
     await queryRunner.query(`DROP TABLE \`scan_logs\``);
     await queryRunner.query(`DROP TABLE \`seller_qrcodes\``);
     await queryRunner.query(

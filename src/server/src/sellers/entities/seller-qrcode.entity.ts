@@ -16,8 +16,9 @@ export class SellerQrcode {
   @Column({ type: 'uuid' })
   sellerId: string;
 
+  // JoinColumn 必须指向实际存值的 sellerId 列，否则关联查询永远为 null
   @ManyToOne(() => Seller, (seller) => seller.qrcodes)
-  @JoinColumn({ name: 'seller_id' })
+  @JoinColumn({ name: 'sellerId' })
   seller: Seller;
 
   @Column({ type: 'uuid', nullable: true })
